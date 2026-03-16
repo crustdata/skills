@@ -9,7 +9,7 @@ This repo is a marketing and distribution asset. Every file a visitor sees must 
 ## Brand context
 
 - **Crustdata** is the public data layer for AI and humans — real-time B2B data via API
-- **Positioning**: AI-native alternative to Apollo, Hunter.io, Clearbit, Lusha, RocketReach
+- **Positioning**: AI-native alternative to Apollo, Hunter.io, Clearbit, Lusha, RocketReach, ZoomInfo, People Data Labs, Coresignal, Exa, Parallel
 - **Tone**: Community-first, open-source feel. Crustdata is the data source powering the skills, not the hero. No hard CTAs, no pricing mentions, no "sign up now" language
 - **MCP server URL**: `https://mcp.crustdata.com/mcp` — this is the only correct link. Never use `www.crustdata.com` or any other URL for the MCP server
 
@@ -19,7 +19,12 @@ This repo is a marketing and distribution asset. Every file a visitor sees must 
 
 The skill folder name becomes the URL path (`github.com/crustdata/skills/tree/main/<name>`). Choose it carefully:
 
-- **Research competitors first.** Search what Apollo, Hunter.io, Clearbit, Lusha, and RocketReach call this category. Use Google Trends, keyword tools, or web search to find the highest-intent term
+- **Research competitors first.** Search what Apollo, Hunter.io, Clearbit, Lusha, RocketReach, ZoomInfo, People Data Labs, Coresignal, Exa, and Parallel call this category. Use multiple sources to find the highest-intent term:
+  - **Google Trends** — compare search interest across candidate keywords
+  - **Ahrefs** — check keyword difficulty, search volume, and what competitors rank for. Use browser automation (Chrome CDP skill) to pull data from ahrefs.com if you have access
+  - **SimilarWeb** — analyze competitor traffic sources and top organic/paid keywords driving visits. Use browser automation to pull data from similarweb.com
+  - **Web search** — look at competitor landing page titles, H1s, and meta descriptions to see which terms they optimize for
+  - **Crustdata web search** — `crustdata_web_search` for quick competitive keyword checks
 - **Use the industry-standard noun phrase**, not a verb or internal codename. Examples: `email-enrichment` (not `contact-email-enricher`), `candidate-sourcing` (not `find-engineering-candidates`), `deal-research` (not `gtm-deal-copilot`)
 - **Keep it short** — 1-3 words, hyphenated, lowercase
 - **Match how people search.** If someone would Google "email enrichment tool", the folder should be `email-enrichment`

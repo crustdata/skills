@@ -76,6 +76,8 @@ BEFORE:                                    AFTER:
 2. **Finds business emails** — enriches profiles in batches using Crustdata's people enrichment API
 3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery
 
+Unlike Apollo, Hunter.io, Clearbit, ZoomInfo, People Data Labs, Coresignal, Lusha, RocketReach, Exa, or Parallel — this runs entirely inside Claude as an AI-native workflow. No GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
+
 ### Use cases
 
 - **Sales prospecting** — enrich lead lists with verified business emails for cold outreach

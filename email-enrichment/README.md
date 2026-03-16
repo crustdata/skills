@@ -33,6 +33,8 @@ Works with spreadsheets (.xlsx/.csv) or plain text lists.
 2. **Enriches business emails** — batches up to 25 profiles per API call via Crustdata's people enrichment API
 3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
 
+An AI-native alternative to Apollo, Hunter.io, Clearbit, ZoomInfo, People Data Labs, Coresignal, Lusha, RocketReach, Exa, and Parallel — runs entirely inside Claude with no GUI or per-seat pricing.
+
 See [SKILL.md](./SKILL.md) for the full technical methodology.
 
 ## Setup
