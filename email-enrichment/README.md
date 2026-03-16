@@ -39,8 +39,8 @@ See [SKILL.md](./SKILL.md) for the full technical methodology.
 
 ## Setup
 
-**Claude Cowork (web):**
-1. Add the Crustdata MCP server (`https://mcp.crustdata.com/mcp`) to your Cowork project
+**Claude.ai (web — no coding required):**
+1. Add Crustdata as a custom connector — in your project, go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 2. Upload the [`.skill` file](https://github.com/crustdata/skills/releases) to your project
 3. Ask Claude to "find emails for these people" with your list
 

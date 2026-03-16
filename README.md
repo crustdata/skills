@@ -1,6 +1,6 @@
 # Crustdata Skills
 
-Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills) and [Claude Cowork](https://claude.ai) skills powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks — no coding required.
+Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills) and [Claude.ai](https://claude.ai) skills powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks — no coding required.
 
 ## Skills
 
@@ -15,13 +15,14 @@ Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills)
 
 ## Getting started
 
-Every skill in this repo works with both **Claude Cowork** (web) and **Claude Code** (CLI). Setup is the same for all skills:
+Every skill in this repo works with both **Claude.ai** (web) and **Claude Code** (CLI). Setup is the same for all skills:
 
-### Claude Cowork (web — no coding required)
+### Claude.ai (web — no coding required)
 
 1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
-2. **Add the Crustdata integration** — in your Cowork project settings, add the MCP server: `https://mcp.crustdata.com/mcp`
-3. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your Cowork project
+2. **Add Crustdata as a custom connector** — in your project, go to Settings → Connectors → "Add custom connector" and paste `https://mcp.crustdata.com/mcp` as the server URL. ([Step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+3. **Connect Gmail** (for skills that create email drafts) — Gmail is a built-in connector. Just click "Connect" next to Gmail in your Connectors settings
+4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
 ### Claude Code (CLI)
 

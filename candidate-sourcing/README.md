@@ -57,13 +57,14 @@ The skill runs 5 phases in sequence:
 
 ## Setup
 
-**Claude Cowork (web):**
-1. Add the Crustdata MCP server (`https://mcp.crustdata.com/mcp`) and Gmail MCP to your Cowork project
-2. Upload the [`.skill` file](https://github.com/crustdata/skills/releases) to your project
-3. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."
+**Claude.ai (web):**
+1. Add Crustdata as a custom connector — in your project, go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+2. Connect Gmail — it's a built-in connector, just click "Connect" next to Gmail in your Connectors settings
+3. Upload the [`.skill` file](https://github.com/crustdata/skills/releases) to your project
+4. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."
 
 **Claude Code (CLI):**
-1. Add the [Crustdata MCP server](https://mcp.crustdata.com/mcp) and Gmail MCP to your config
+1. Add the [Crustdata MCP server](https://mcp.crustdata.com/mcp) and Gmail MCP server to your config
 2. Import this skill directory into your workspace
 3. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."
 

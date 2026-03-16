@@ -2,9 +2,23 @@
 
 ## What this repo is
 
-A public-facing collection of Claude Code / Claude Cowork skills powered by Crustdata's APIs. Each skill is a self-contained AI workflow for a specific task (email enrichment, candidate sourcing, deal research, etc.). The primary audience is **prosumer users** — individuals and small teams who want enterprise-grade data workflows without writing code.
+A public-facing collection of skills for Claude (claude.ai, Claude Desktop, and Claude Code) powered by Crustdata's APIs. Each skill is a self-contained AI workflow for a specific task (email enrichment, candidate sourcing, deal research, etc.). The primary audience is **prosumer users** — individuals and small teams who want enterprise-grade data workflows without writing code.
 
 This repo is a marketing and distribution asset. Every file a visitor sees must be polished, accurate, and immediately useful.
+
+## Writing voice
+
+Every word earns its place or gets cut. No filler, no fluff, no "leverage our cutting-edge solution." Write like you're explaining it to a smart friend who's busy.
+
+- **Lead with what it does, not what it is.** "Turn a list of names into verified emails" beats "An AI-powered email enrichment solution."
+- **One idea per sentence.** If a sentence has "and" in it, it's probably two sentences.
+- **Concrete over abstract.** Show a before/after table. Don't say "powerful" — show the power.
+- **Simple words win.** "Use" not "utilize." "Find" not "discover." "Get" not "obtain."
+- **Cut ruthlessly.** If removing a word doesn't change the meaning, remove it. If removing a sentence doesn't weaken the section, remove it.
+- **Setup instructions = recipe steps.** Number them. Each step is one action. A non-technical user should never wonder "what do I click next?"
+- **No marketing speak.** No "seamlessly", "effortlessly", "cutting-edge", "best-in-class", "robust". These words mean nothing. Say what it actually does.
+
+The README is a product page, not a press release. A plumber who just started using Claude should be able to read it and know exactly what they'll get and how to set it up.
 
 ## Brand context
 
@@ -46,10 +60,17 @@ This lives inside the skill folder (e.g., `email-enrichment/README.md`). It's th
 - **What it does** — bullet points: what inputs it takes, what outputs it produces
 - **Example** — before/after table showing real input and output. This is the most important section for non-technical users. They need to see exactly what they'll get
 - **How it works** — 3 numbered steps max. Attribute everything to Crustdata APIs. Never mention internal techniques (GitHub commit scraping, Codeforces, etc.)
-- **Setup** — two subsections: Claude Cowork (web) and Claude Code (CLI). Cowork goes first because most prosumer users are non-technical
+- **Setup** — two subsections: Claude.ai (web) and Claude Code (CLI). Claude.ai goes first because most prosumer users are non-technical
 - **Evals** — link to the evals.json file
 
 **Setup instructions must link to an actual release.** If the `.skill` file doesn't exist in Releases yet, create the release before pushing the README. Never link to a Releases page that has nothing to download.
+
+**Claude.ai setup wording rules:**
+- **Crustdata is a "custom connector"**, not an "MCP server". Non-technical users don't know what MCP means. Always say "Add Crustdata as a custom connector" and link to the step-by-step guide: `https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp`
+- **Gmail is a built-in connector** — never say "add Gmail MCP". Just say "Connect Gmail — it's a built-in connector, just click 'Connect' next to Gmail in your Connectors settings"
+- **Other built-in connectors** (Google Drive, Google Calendar, Slack, etc.) should also be described as "built-in" with simple "click Connect" instructions, never as "MCP servers"
+- **Only Crustdata requires the custom connector flow** because it's not a pre-built integration in Claude.ai
+- **Always include the tutorial link** for the custom connector step — non-technical users will get stuck without it
 
 ### 4. Update the repo-level README.md
 
@@ -65,7 +86,7 @@ The repo README is a **skills catalog**, not a landing page for any single skill
 
 Every skill must have `evals/evals.json` inside its directory. This is how we track quality across updates.
 
-**Format** (follows Claude Cowork skill-creator schema):
+**Format** (follows skill-creator eval schema):
 ```json
 {
   "skill_name": "<folder-name>",
@@ -90,7 +111,7 @@ Every skill must have `evals/evals.json` inside its directory. This is how we tr
 
 ### 6. Create the .skill release
 
-**This is not optional.** The README links to Releases for Cowork users to download. An empty Releases page is a broken experience.
+**This is not optional.** The README links to Releases for users to download. An empty Releases page is a broken experience.
 
 ```bash
 # Package the skill (only SKILL.md goes in the .skill file)
@@ -100,7 +121,7 @@ zip -r <skill-name>.skill <skill-name>/SKILL.md
 # Create the release
 gh release create v<X.Y.Z> <skill-name>.skill \
   --title "v<X.Y.Z> — <Skill Display Name>" \
-  --notes "Release notes with install instructions for Cowork and Code"
+  --notes "Release notes with install instructions for Claude.ai and Claude Code"
 ```
 
 **When to bump versions:**
@@ -120,7 +141,7 @@ Before pushing, verify every single one of these:
 - [ ] **Release exists** with downloadable `.skill` file before the README links to it
 - [ ] **All links work** — relative links to files that exist, external URLs that resolve
 - [ ] **evals.json is valid JSON** — run `python3 -c "import json; json.load(open('evals/evals.json'))"`
-- [ ] **Setup instructions cover both platforms** — Claude Cowork (web) listed first, Claude Code (CLI) second
+- [ ] **Setup instructions cover both platforms** — Claude.ai (web) listed first, Claude Code (CLI) second
 - [ ] **Before/after example** is present in both the repo README section and the skill README
 - [ ] **No typos** in skill names, company names, or API endpoint URLs
 - [ ] **Repo README skills table** has the new skill listed
@@ -148,5 +169,5 @@ skills/
 2. **Writing the repo README as a single-skill landing page.** The repo README is a catalog. Each skill gets a section, but the intro, Getting Started, and Contributing sections are shared
 3. **Exposing implementation techniques in READMEs.** The SKILL.md is private to the AI. The README is public to the world. Techniques like GitHub commit email extraction are competitive advantages — keep them in SKILL.md, describe them generically in the README ("multi-source discovery")
 4. **Naming skills with internal jargon.** Use the term your customer would search for, not your internal project name
-5. **Forgetting Claude Cowork users.** Most prosumer users are non-technical. Cowork setup instructions go first, and they must be dead simple (no JSON configs, no CLI commands)
+5. **Forgetting Claude.ai users.** Most prosumer users are non-technical. Claude.ai setup instructions go first, and they must be dead simple (no JSON configs, no CLI commands)
 6. **Making the GitHub repo description skill-specific.** The description must work for all skills, current and future
