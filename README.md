@@ -7,6 +7,7 @@ Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills)
 | Skill | What it does |
 |-------|-------------|
 | [Email Enrichment](./email-enrichment/) | Turn a list of names into verified business and personal emails |
+| [Candidate Sourcing](./candidate-sourcing/) | Go from "I need to hire for role X" to personalized Gmail drafts ready to send |
 
 *More skills coming soon.*
 
@@ -93,17 +94,68 @@ Just ask Claude: *"Find emails for these people: [paste your list]"*
 
 ---
 
+## Candidate Sourcing
+
+> AI-powered candidate sourcing for founders and hiring managers. Find engineers, verify their LinkedIn profiles, enrich emails, write personalized outreach, and create Gmail drafts — all in one workflow.
+
+**Input:** A role description — what you're hiring for, what technical problems matter, any target companies or communities
+
+**Output:** Gmail drafts ready to send, each with a personalized opener referencing the candidate's specific work
+
+### Before & After
+
+```
+YOU SAY:                                   YOU GET:
+┌─────────────────────────────────┐        ┌──────────────┬───────────┬─────────────────────────────────────┬──────────┐
+│ "Find 5 ML engineers who've     │        │ Candidate    │ Company   │ Why them                            │ Status   │
+│  published on RAG. Prioritize   │  ──►   ├──────────────┼───────────┼─────────────────────────────────────┼──────────┤
+│  startups over FAANG. Draft     │        │ Jane Chen    │ Cohere    │ First author on RAG benchmark paper │ Draft ✓  │
+│  outreach for our Founding ML   │        │ Raj Patel    │ Pinecone  │ Built RAG eval toolkit (2.3K stars) │ Draft ✓  │
+│  Engineer role."                │        │ Maria Lopez  │ Weaviate  │ Led vector search, MLOps speaker    │ Draft ✓  │
+└─────────────────────────────────┘        └──────────────┴───────────┴─────────────────────────────────────┴──────────┘
+```
+
+### How it works
+
+1. **Finds candidates** — searches Crustdata's 1B+ person database, arXiv, GitHub, and the web for people matching your specific criteria
+2. **Verifies LinkedIn** — waterfall lookup through Crustdata, never guesses URLs (guessed URLs caused 12 errors in a real 91-person campaign)
+3. **Finds emails** — business emails via Crustdata enrichment, personal emails via Crustdata web search
+4. **Writes personalized outreach** — each email references the candidate's specific work, not job titles
+5. **Creates Gmail drafts** — ready to review and send, with a CSV tracker for pipeline management
+
+Unlike Juicebox, HireEZ, SeekOut, LinkedIn Recruiter, or traditional recruiters ($15-30K per hire) — you define the ranking criteria, you see every step, and you pay per use. No black-box algorithm deciding who's "best."
+
+### Use cases
+
+- **Seed/Series A founders** sourcing their first engineers without a recruiter
+- **Hiring managers** who want to own top-of-funnel instead of waiting on recruiters
+- **Technical founders** who know what "good" looks like and want to define their own ranking
+- **Anyone tired of Juicebox** surfacing the same senior FAANG engineers that every other startup is pitching
+
+### Try it
+
+Tell Claude: *"I need to hire a [role]. Find candidates and set up outreach."*
+
+[Full documentation and evals →](./candidate-sourcing/)
+
+---
+
 ## Contributing
 
 Each skill lives in its own directory:
 
 ```
 skills/
-  email-enrichment/
-    SKILL.md          # Skill definition (the AI reads this)
-    README.md         # Human-readable docs
-    evals/
-      evals.json      # Test cases for benchmarking
+├── email-enrichment/
+│   ├── SKILL.md          # Skill definition (the AI reads this)
+│   ├── README.md         # Human-readable docs
+│   └── evals/
+│       └── evals.json    # Test cases for benchmarking
+└── candidate-sourcing/
+    ├── SKILL.md
+    ├── README.md
+    └── evals/
+        └── evals.json
 ```
 
 ## License
