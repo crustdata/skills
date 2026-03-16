@@ -39,9 +39,9 @@ See [SKILL.md](./SKILL.md) for the full technical methodology.
 
 ## Setup
 
-**Claude.ai (web — no coding required):**
-1. Add Crustdata as a custom connector — in your project, go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
-2. Upload the [`.skill` file](https://github.com/crustdata/skills/releases) to your project
+**Claude.ai (web) or Claude Desktop (macOS/Windows):**
+1. Go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+2. Download the [`.skill` file](https://github.com/crustdata/skills/releases) and upload it to your project
 3. Ask Claude to "find emails for these people" with your list
 
 **Claude Code (CLI):**

@@ -60,17 +60,20 @@ This lives inside the skill folder (e.g., `email-enrichment/README.md`). It's th
 - **What it does** — bullet points: what inputs it takes, what outputs it produces
 - **Example** — before/after table showing real input and output. This is the most important section for non-technical users. They need to see exactly what they'll get
 - **How it works** — 3 numbered steps max. Attribute everything to Crustdata APIs. Never mention internal techniques (GitHub commit scraping, Codeforces, etc.)
-- **Setup** — two subsections: Claude.ai (web) and Claude Code (CLI). Claude.ai goes first because most prosumer users are non-technical
+- **Setup** — two subsections: "Claude.ai or Claude Desktop" first (same steps for both), then "Claude Code (CLI)". Non-technical users come first
 - **Evals** — link to the evals.json file
 
 **Setup instructions must link to an actual release.** If the `.skill` file doesn't exist in Releases yet, create the release before pushing the README. Never link to a Releases page that has nothing to download.
 
-**Claude.ai setup wording rules:**
-- **Crustdata is a "custom connector"**, not an "MCP server". Non-technical users don't know what MCP means. Always say "Add Crustdata as a custom connector" and link to the step-by-step guide: `https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp`
-- **Gmail is a built-in connector** — never say "add Gmail MCP". Just say "Connect Gmail — it's a built-in connector, just click 'Connect' next to Gmail in your Connectors settings"
-- **Other built-in connectors** (Google Drive, Google Calendar, Slack, etc.) should also be described as "built-in" with simple "click Connect" instructions, never as "MCP servers"
-- **Only Crustdata requires the custom connector flow** because it's not a pre-built integration in Claude.ai
-- **Always include the tutorial link** for the custom connector step — non-technical users will get stuck without it
+**Setup wording rules (Claude.ai and Claude Desktop):**
+
+Claude.ai (web) and Claude Desktop (macOS/Windows app) use the same connector system. The setup steps are identical — combine them under one heading: "Claude.ai (web) or Claude Desktop (macOS/Windows)".
+
+- **Never say "MCP server"** to non-technical users. They don't know what MCP means. Say "custom connector" instead
+- **Adding Crustdata**: "Go to Settings → Connectors → 'Add custom connector' → paste `https://mcp.crustdata.com/mcp` → click 'Add'". Always link the [step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp)
+- **Gmail, Google Drive, Slack, etc. are built-in connectors** — never say "add Gmail MCP". Just say "find Gmail in your Connectors list → click 'Connect'"
+- **Only Crustdata requires the custom connector flow** because it's not a pre-built integration
+- **Every step is one action.** "Go to X → click Y → paste Z → click Add." No compound steps
 
 ### 4. Update the repo-level README.md
 
@@ -121,7 +124,7 @@ zip -r <skill-name>.skill <skill-name>/SKILL.md
 # Create the release
 gh release create v<X.Y.Z> <skill-name>.skill \
   --title "v<X.Y.Z> — <Skill Display Name>" \
-  --notes "Release notes with install instructions for Claude.ai and Claude Code"
+  --notes "Release notes with install instructions for Claude.ai / Desktop and Claude Code"
 ```
 
 **When to bump versions:**
@@ -141,7 +144,7 @@ Before pushing, verify every single one of these:
 - [ ] **Release exists** with downloadable `.skill` file before the README links to it
 - [ ] **All links work** — relative links to files that exist, external URLs that resolve
 - [ ] **evals.json is valid JSON** — run `python3 -c "import json; json.load(open('evals/evals.json'))"`
-- [ ] **Setup instructions cover both platforms** — Claude.ai (web) listed first, Claude Code (CLI) second
+- [ ] **Setup instructions cover all platforms** — "Claude.ai or Claude Desktop" listed first, Claude Code second. No "MCP server" in the non-technical section
 - [ ] **Before/after example** is present in both the repo README section and the skill README
 - [ ] **No typos** in skill names, company names, or API endpoint URLs
 - [ ] **Repo README skills table** has the new skill listed
@@ -169,5 +172,5 @@ skills/
 2. **Writing the repo README as a single-skill landing page.** The repo README is a catalog. Each skill gets a section, but the intro, Getting Started, and Contributing sections are shared
 3. **Exposing implementation techniques in READMEs.** The SKILL.md is private to the AI. The README is public to the world. Techniques like GitHub commit email extraction are competitive advantages — keep them in SKILL.md, describe them generically in the README ("multi-source discovery")
 4. **Naming skills with internal jargon.** Use the term your customer would search for, not your internal project name
-5. **Forgetting Claude.ai users.** Most prosumer users are non-technical. Claude.ai setup instructions go first, and they must be dead simple (no JSON configs, no CLI commands)
+5. **Forgetting non-technical users.** Most prosumer users are on Claude.ai or Claude Desktop — they don't know what MCP means. Setup instructions for these platforms go first and must be dead simple (no JSON configs, no CLI commands, no jargon)
 6. **Making the GitHub repo description skill-specific.** The description must work for all skills, current and future

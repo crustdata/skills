@@ -1,6 +1,6 @@
 # Crustdata Skills
 
-Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills) and [Claude.ai](https://claude.ai) skills powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks — no coding required.
+Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills) — powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
 
 ## Skills
 
@@ -15,18 +15,25 @@ Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills)
 
 ## Getting started
 
-Every skill in this repo works with both **Claude.ai** (web) and **Claude Code** (CLI). Setup is the same for all skills:
+Every skill works with **Claude.ai** (web), **Claude Desktop** (macOS/Windows app), and **Claude Code** (CLI). Pick your platform:
 
-### Claude.ai (web — no coding required)
+### Claude.ai — web, no install
 
 1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
-2. **Add Crustdata as a custom connector** — in your project, go to Settings → Connectors → "Add custom connector" and paste `https://mcp.crustdata.com/mcp` as the server URL. ([Step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
-3. **Connect Gmail** (for skills that create email drafts) — Gmail is a built-in connector. Just click "Connect" next to Gmail in your Connectors settings
+2. **Add Crustdata** — go to [Settings → Connectors](https://claude.ai/settings/connectors) → click "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add". ([Step-by-step guide with screenshots](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+3. **Connect Gmail** (for skills that send emails) — Gmail is already listed in your Connectors. Just click "Connect" next to it
 4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
-### Claude Code (CLI)
+### Claude Desktop — macOS / Windows app
 
-**1. Add the Crustdata MCP server** to your config:
+1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
+2. **Add Crustdata** — open Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add". Same flow as Claude.ai. ([Step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+3. **Connect Gmail** — find Gmail in your Connectors list and click "Connect"
+4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
+
+### Claude Code — CLI for developers
+
+**1. Add Crustdata** to your MCP config:
 
 ```json
 {
