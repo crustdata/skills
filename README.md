@@ -1,6 +1,53 @@
 # Crustdata Skills
 
-**Turn a spreadsheet of names into verified business and personal emails** — and more. A collection of open-source [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs.
+Open-source [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills) and [Claude Cowork](https://claude.ai) skills powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks — no coding required.
+
+## Skills
+
+| Skill | What it does |
+|-------|-------------|
+| [Email Enrichment](./email-enrichment/) | Turn a list of names into verified business and personal emails |
+
+*More skills coming soon.*
+
+---
+
+## Getting started
+
+Every skill in this repo works with both **Claude Cowork** (web) and **Claude Code** (CLI). Setup is the same for all skills:
+
+### Claude Cowork (web — no coding required)
+
+1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
+2. **Add the Crustdata integration** — in your Cowork project settings, add the MCP server: `https://mcp.crustdata.com/mcp`
+3. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your Cowork project
+
+### Claude Code (CLI)
+
+**1. Add the Crustdata MCP server** to your config:
+
+```json
+{
+  "mcpServers": {
+    "crustdata": {
+      "url": "https://mcp.crustdata.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Get your API key at [crustdata.com](https://crustdata.com).
+
+**2. Clone this repo:**
+
+```bash
+git clone https://github.com/crustdata/skills.git
+```
+
+---
 
 ## Email Enrichment
 
@@ -26,61 +73,8 @@ BEFORE:                                    AFTER:
 ### How it works
 
 1. **Resolves identities** — matches names + companies to LinkedIn profiles via Crustdata's 1B+ person database
-2. **Finds business emails** — enriches profiles in batches of 25 using Crustdata's people enrichment API (70-80% hit rate for active professionals)
-3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
-
-Unlike traditional email finders (Apollo, Hunter.io, Clearbit), this runs entirely inside Claude as an AI-native workflow — no GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
-
-Works with both **Claude Code** (CLI) and **Claude Cowork** (web).
-
-### Quick start
-
-#### Option A: Claude Cowork (web — no coding required)
-
-1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
-2. **Add the Crustdata integration** — go to your Cowork project settings, add the Crustdata MCP server: `https://mcp.crustdata.com/mcp`
-3. **Upload the skill** — download the [`.skill` file from Releases](https://github.com/crustdata/skills/releases) and upload it to your Cowork project
-4. **Use it** — just ask Claude:
-   - *"Find emails for these people: [paste list]"*
-   - *"Enrich this spreadsheet with business and personal emails"* (attach .xlsx)
-   - *"Get me the email addresses for everyone in this investor list"*
-
-#### Option B: Claude Code (CLI)
-
-**1. Add the Crustdata MCP server**
-
-Add this to your Claude Code MCP config:
-
-```json
-{
-  "mcpServers": {
-    "crustdata": {
-      "url": "https://mcp.crustdata.com/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-Get your API key at [crustdata.com](https://crustdata.com).
-
-**2. Import the skill**
-
-Download `email-enrichment/` from this repo into your Claude Code skills directory, or clone the repo:
-
-```bash
-git clone https://github.com/crustdata/skills.git
-```
-
-**3. Use it**
-
-Just ask Claude:
-
-- *"Find emails for these people: [paste list]"*
-- *"Enrich this spreadsheet with business and personal emails"* (attach .xlsx)
-- *"Get me the email addresses for everyone in this investor list"*
+2. **Finds business emails** — enriches profiles in batches using Crustdata's people enrichment API
+3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery
 
 ### Use cases
 
@@ -89,15 +83,11 @@ Just ask Claude:
 - **Investor outreach** — build contact lists for fundraising from conference attendee lists
 - **Event follow-up** — turn a spreadsheet of people you met into actionable contacts
 
----
+### Try it
 
-## All Skills
+Just ask Claude: *"Find emails for these people: [paste your list]"*
 
-| Skill | Description |
-|-------|-------------|
-| [email-enrichment](./email-enrichment/) | Bulk email finder — enrich contact lists with verified business and personal emails |
-
-*More skills coming soon.*
+[Full documentation and evals →](./email-enrichment/)
 
 ---
 
