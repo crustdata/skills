@@ -1,5 +1,5 @@
 ---
-name: contact-email-enricher
+name: email-enrichment
 description: >
   Enrich a list of people with verified business and personal emails. Uses Crustdata for business emails
   and GitHub commit history + web search fallbacks (Codeforces, Facebook, Keybase) for personal emails.
@@ -396,6 +396,6 @@ For each person:
 ## Tool dependencies
 
 This skill requires:
-- **Crustdata MCP tools**: `crustdata_people_search_db`, `crustdata_people_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
+- **Crustdata MCP server** ([mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp)): provides `crustdata_people_search_db`, `crustdata_people_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
 - **Python** (with `openpyxl`): for spreadsheet I/O and parsing large API responses
 - **Web search** (Crustdata or general): for fallback email discovery

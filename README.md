@@ -1,37 +1,107 @@
 # Crustdata Skills
 
-A collection of [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) that leverage Crustdata's enrichment APIs for contact discovery, lead research, and GTM workflows.
+**Turn a spreadsheet of names into verified business and personal emails** — and more. A collection of open-source [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs.
 
-## Skills
+## Email Enrichment
+
+> Bulk email finder for B2B contact enrichment. Find business emails and personal emails from a list of names, LinkedIn profiles, or a spreadsheet.
+
+**Input:** A list of people — names, companies, LinkedIn URLs, or an .xlsx/.csv spreadsheet
+
+**Output:** Verified business emails + personal emails, added as new columns
+
+### Before & After
+
+```
+BEFORE:                                    AFTER:
+┌──────────────┬─────────────┐             ┌──────────────┬─────────────┬─────────────────────┬──────────────────────┐
+│ Name         │ Company     │             │ Name         │ Company     │ Business Email      │ Personal Email       │
+├──────────────┼─────────────┤             ├──────────────┼─────────────┼─────────────────────┼──────────────────────┤
+│ Pete Koomen  │ YC          │    ──►      │ Pete Koomen  │ YC          │ pete@ycombinator.com│ koomen@gmail.com     │
+│ Kaushik Iska │ ClickHouse  │             │ Kaushik Iska │ ClickHouse  │ kaushik@clickhouse… │ iska.kaushik@gmail…  │
+│ Topher Conway│ SV Angel    │             │ Topher Conway│ SV Angel    │ topher@svangel.com  │ —                    │
+└──────────────┴─────────────┘             └──────────────┴─────────────┴─────────────────────┴──────────────────────┘
+```
+
+### How it works
+
+1. **Resolves identities** — matches names + companies to LinkedIn profiles via Crustdata's 1B+ person database
+2. **Finds business emails** — enriches profiles in batches of 25 using Crustdata's people enrichment API (70-80% hit rate for active professionals)
+3. **Finds personal emails** — extracts emails from GitHub commit history for technical contacts, with fallbacks to Codeforces, Keybase, personal websites, and web search
+
+Unlike traditional email finders (Apollo, Hunter.io, Clearbit), this runs entirely inside Claude Code as an AI-native workflow — no GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
+
+### Quick start
+
+**1. Add the Crustdata MCP server to Claude Code**
+
+```json
+{
+  "mcpServers": {
+    "crustdata": {
+      "url": "https://mcp.crustdata.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Get your API key at [crustdata.com](https://crustdata.com).
+
+**2. Import the skill**
+
+Download `email-enrichment/` from this repo into your Claude Code skills directory, or clone the repo:
+
+```bash
+git clone https://github.com/crustdata/skills.git
+```
+
+**3. Use it**
+
+Just ask Claude:
+
+- *"Find emails for these people: [paste list]"*
+- *"Enrich this spreadsheet with business and personal emails"* (attach .xlsx)
+- *"Get me the email addresses for everyone in this investor list"*
+
+### Use cases
+
+- **Sales prospecting** — enrich lead lists with verified business emails for cold outreach
+- **Recruiting** — find personal emails for engineering candidates you want to reach directly
+- **Investor outreach** — build contact lists for fundraising from conference attendee lists
+- **Event follow-up** — turn a spreadsheet of people you met into actionable contacts
+
+---
+
+## All Skills
 
 | Skill | Description |
 |-------|-------------|
-| [contact-email-enricher](./contact-email-enricher/) | Enrich a list of people with verified business and personal emails using Crustdata for business emails and GitHub commit history + web search fallbacks for personal emails |
+| [email-enrichment](./email-enrichment/) | Bulk email finder — enrich contact lists with verified business and personal emails |
 
-## Installation
+*More skills coming soon.*
 
-Each skill directory contains a `SKILL.md` file. To use a skill in Claude Code:
+---
 
-1. Download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases), or
-2. Clone this repo and import the skill directory directly into your Claude Code workspace
+## Contributing
 
-## Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with skills support
-- [Crustdata MCP server](https://www.crustdata.com) configured for tools like `crustdata_people_search_db`, `crustdata_people_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
-
-## Adding new skills
-
-Each skill lives in its own directory with a `SKILL.md` file:
+Each skill lives in its own directory:
 
 ```
 skills/
-  contact-email-enricher/
-    SKILL.md
-  another-skill/
-    SKILL.md
+  email-enrichment/
+    SKILL.md          # Skill definition (the AI reads this)
+    README.md         # Human-readable docs
+    evals/
+      evals.json      # Test cases for benchmarking
 ```
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE).
+
+---
+
+Built on [Crustdata](https://crustdata.com) — the public data layer for AI and humans.
