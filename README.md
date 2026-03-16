@@ -29,11 +29,27 @@ BEFORE:                                    AFTER:
 2. **Finds business emails** — enriches profiles in batches of 25 using Crustdata's people enrichment API (70-80% hit rate for active professionals)
 3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
 
-Unlike traditional email finders (Apollo, Hunter.io, Clearbit), this runs entirely inside Claude Code as an AI-native workflow — no GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
+Unlike traditional email finders (Apollo, Hunter.io, Clearbit), this runs entirely inside Claude as an AI-native workflow — no GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
+
+Works with both **Claude Code** (CLI) and **Claude Cowork** (web).
 
 ### Quick start
 
-**1. Add the Crustdata MCP server to Claude Code**
+#### Option A: Claude Cowork (web — no coding required)
+
+1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
+2. **Add the Crustdata integration** — go to your Cowork project settings, add the Crustdata MCP server: `https://mcp.crustdata.com/mcp`
+3. **Upload the skill** — download the [`.skill` file from Releases](https://github.com/crustdata/skills/releases) and upload it to your Cowork project
+4. **Use it** — just ask Claude:
+   - *"Find emails for these people: [paste list]"*
+   - *"Enrich this spreadsheet with business and personal emails"* (attach .xlsx)
+   - *"Get me the email addresses for everyone in this investor list"*
+
+#### Option B: Claude Code (CLI)
+
+**1. Add the Crustdata MCP server**
+
+Add this to your Claude Code MCP config:
 
 ```json
 {

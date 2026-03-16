@@ -37,8 +37,14 @@ See [SKILL.md](./SKILL.md) for the full technical methodology.
 
 ## Setup
 
-1. Install the [Crustdata MCP server](https://mcp.crustdata.com/mcp) in Claude Code
-2. Import this skill into your Claude Code workspace
+**Claude Cowork (web):**
+1. Add the Crustdata MCP server (`https://mcp.crustdata.com/mcp`) to your Cowork project
+2. Upload the [`.skill` file](https://github.com/crustdata/skills/releases) to your project
+3. Ask Claude to "find emails for these people" with your list
+
+**Claude Code (CLI):**
+1. Add the [Crustdata MCP server](https://mcp.crustdata.com/mcp) to your Claude Code config
+2. Import this skill directory into your workspace
 3. Ask Claude to "find emails for these people" with your list
 
 ## Evals
