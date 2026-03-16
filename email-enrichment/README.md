@@ -1,13 +1,13 @@
 # Email Enrichment
 
-Find verified business and personal emails for any list of people — powered by [Crustdata](https://crustdata.com)'s real-time people data and GitHub commit history extraction.
+Find verified business and personal emails for any list of people — powered by [Crustdata](https://crustdata.com)'s real-time people enrichment and web search APIs.
 
 ## What it does
 
 Give it a list of names (with optional LinkedIn URLs, companies, or titles) and it returns:
 
-- **Business emails** via Crustdata's 1B+ profile database
-- **Personal emails** via GitHub commit history, Codeforces profiles, web search fallbacks
+- **Business emails** via Crustdata's 1B+ profile enrichment API
+- **Personal emails** via Crustdata's web search API and multi-source discovery
 
 Works with spreadsheets (.xlsx/.csv) or plain text lists.
 
@@ -30,10 +30,10 @@ Works with spreadsheets (.xlsx/.csv) or plain text lists.
 ## How it works
 
 1. **Resolves LinkedIn profiles** — uses Crustdata people search to match names + companies to LinkedIn URLs
-2. **Enriches business emails** — batches up to 25 profiles per API call via Crustdata's people enrichment
-3. **Finds personal emails** — for technical people, extracts emails from GitHub commit history (oldest non-fork repos). Falls back to Codeforces, Keybase, personal websites, and web search
+2. **Enriches business emails** — batches up to 25 profiles per API call via Crustdata's people enrichment API
+3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
 
-See [SKILL.md](./SKILL.md) for the full technical methodology including identity verification, rate limit handling, and the complete fallback chain.
+See [SKILL.md](./SKILL.md) for the full technical methodology.
 
 ## Setup
 

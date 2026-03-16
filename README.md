@@ -27,7 +27,7 @@ BEFORE:                                    AFTER:
 
 1. **Resolves identities** — matches names + companies to LinkedIn profiles via Crustdata's 1B+ person database
 2. **Finds business emails** — enriches profiles in batches of 25 using Crustdata's people enrichment API (70-80% hit rate for active professionals)
-3. **Finds personal emails** — extracts emails from GitHub commit history for technical contacts, with fallbacks to Codeforces, Keybase, personal websites, and web search
+3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
 
 Unlike traditional email finders (Apollo, Hunter.io, Clearbit), this runs entirely inside Claude Code as an AI-native workflow — no GUI, no manual CSV uploads, no per-seat pricing. Just describe what you need.
 
