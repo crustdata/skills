@@ -185,7 +185,35 @@ The `fields: "name,business_email"` parameter is critical — the default respon
 
 **Expected hit rates:** ~70-80% for professionals at known companies, ~40-50% for independent operators, ~20-30% for people between roles.
 
-### 3B: Personal email via GitHub commit history
+### 3B: Personal email via Crustdata person enrichment
+
+Crustdata's person enrich API can return personal email addresses directly. This is faster and more reliable than GitHub commit extraction, so **always try this before falling back to GitHub**.
+
+Request personal emails by including `fields=personal_contact_info.personal_emails`:
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "url1,url2,url3..."
+  fields: "personal_contact_info.personal_emails"
+```
+
+The response includes a `personal_contact_info` object with a `personal_emails` array containing the person's personal email addresses (Gmail, ProtonMail, etc.).
+
+You can combine this with business email and phone numbers in a single call:
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "url1,url2,url3..."
+  fields: "name,business_email,personal_contact_info.personal_emails,personal_contact_info.phone_numbers"
+```
+
+**Credit cost:** 2 credits per profile for `personal_contact_info.personal_emails`, 2 credits per profile for `personal_contact_info.phone_numbers` (on top of the base enrichment cost).
+
+**Batch limit:** Up to 25 LinkedIn URLs per call, same as business email enrichment.
+
+**Recommended approach:** Combine steps 3A and 3B into a single enrichment call by requesting both `business_email` and `personal_contact_info.personal_emails` fields together. This saves an API round-trip and gets both email types at once.
+
+If personal email is found, prefer it over business email for cold outreach (higher response rate, less likely to be filtered by corporate spam). If this returns no personal email for a candidate, fall through to GitHub commit extraction below.
+
+### 3C: Personal email via GitHub commit history (fallback if 3B returns nothing)
 
 This is the most powerful technique for technical candidates. Git records the author's email in every commit, and this metadata is accessible even when profile email privacy is enabled.
 
@@ -222,16 +250,16 @@ Extract from `From: Name <email>` header line.
 
 **Step 5: Validate** — discard `*@users.noreply.github.com`, `noreply@github.com`, and any email containing `noreply`.
 
-### 3C: Web search fallbacks
+### 3D: Web search fallbacks
 
-When GitHub doesn't work, try these in order:
+When both Crustdata personal email enrichment and GitHub don't work, try these in order:
 1. GitHub issues/READMEs: `"[name]" "@gmail.com" site:github.com`
 2. Competitive programming: `"[name]" site:codeforces.com`
 3. Personal websites: `"[name]" "[company]" email contact`
 4. Conference speaker pages: `"[name]" "[company]" speaker email`
 5. Academic profiles: `"[name]" site:scholar.google.com`
 
-### 3D: Handle GitHub API rate limits
+### 3E: Handle GitHub API rate limits
 
 GitHub allows 60 unauthenticated requests/hour. Workarounds:
 - Use `.patch` endpoints (don't count against REST API limits)
@@ -381,10 +409,10 @@ When processing many candidates (>5), use this sequence to minimize time:
 
 1. **Search and collect candidates** (Phase 1) — build the full list first
 2. **Batch LinkedIn verification** (Phase 2) — 5-6 parallel `people_search_db` calls; web search fallback for failures
-3. **Batch business email enrichment** (Phase 3A) — up to 25 LinkedIn URLs per Crustdata enrichment call
-4. **Triage for GitHub** (Phase 3B) — identify which candidates are engineers likely to have GitHub profiles; prioritize them for commit email extraction
-5. **Batch GitHub lookups** (Phase 3B) — `crustdata_web_fetch` with multiple GitHub URLs per call (up to 10)
-6. **Web search fallbacks** (Phase 3C) — for candidates where business email and GitHub both failed
+3. **Batch email enrichment** (Phase 3A + 3B) — up to 25 LinkedIn URLs per call with `fields: "name,business_email,personal_contact_info.personal_emails"` to get both business and personal emails in one round-trip
+4. **Triage for GitHub** (Phase 3C) — identify candidates still missing emails who are engineers likely to have GitHub profiles; prioritize them for commit email extraction
+5. **Batch GitHub lookups** (Phase 3C) — `crustdata_web_fetch` with multiple GitHub URLs per call (up to 10)
+6. **Web search fallbacks** (Phase 3D) — for candidates where Crustdata enrichment and GitHub both failed
 7. **Write all email copy** (Phase 4) — draft all openers in one pass, using the proof-of-work notes from Phase 1
 8. **Create all Gmail drafts** (Phase 5) — create drafts and log to tracker
 
@@ -408,7 +436,7 @@ Always parse saved results with Python rather than trying to process them inline
 ## Tool dependencies
 
 This skill requires:
-- **Crustdata MCP server** ([mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp)): provides `crustdata_people_search_db`, `crustdata_people_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
+- **Crustdata MCP server** ([mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp)): provides `crustdata_people_search_db`, `crustdata_people_enrich` (with `fields` supporting `business_email`, `personal_contact_info.personal_emails`, `personal_contact_info.phone_numbers`), `crustdata_company_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
 - **Gmail MCP**: `gmail_create_draft`
 - **Python** (with `openpyxl` for spreadsheet I/O, `csv` for tracker)
 - **Web search** (Crustdata) for fallback email discovery

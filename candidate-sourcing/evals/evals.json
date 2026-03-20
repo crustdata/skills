@@ -325,6 +325,37 @@
         }
       ],
       "failure_story": "In a real campaign, 3 active founders (Di Jin at Eigen AI, Sai Surbehera at Lapis Labs, Aayush Anand at Level.game) were included in outreach drafts. All their companies were active — reaching out wasted slots and felt tone-deaf. The fix: check titles for founder/CEO/CTO, verify company health via crustdata_company_enrich, and skip unless all three shrinking signals are present."
+    },
+    {
+      "id": 14,
+      "name": "personal-email-enrichment-via-crustdata",
+      "category": "email_enrichment",
+      "prompt": "Find personal email addresses for these candidates using Crustdata enrichment. I already have their verified LinkedIn URLs: 1) Rajat Arya — https://www.linkedin.com/in/rajatarya (Team Lead at Hugging Face). 2) Anurag Sahu — https://www.linkedin.com/in/anurag-sahu-mle (Staff ML Engineer at Zscaler). Try Crustdata's personal email enrichment first before falling back to GitHub.",
+      "expected_output": "Should use crustdata_people_enrich with fields including 'personal_contact_info.personal_emails' to request personal emails. Should try this BEFORE falling back to GitHub commit extraction. The enrichment call should include the LinkedIn URLs. If personal emails are returned, they should be non-noreply addresses. If not returned, should fall through to GitHub commit extraction (Phase 3C).",
+      "assertions": [
+        {
+          "text": "Uses crustdata_people_enrich with personal_contact_info.personal_emails in the fields parameter",
+          "type": "tool_usage",
+          "required_tools": ["crustdata_people_enrich"],
+          "description": "The enrichment call must include 'personal_contact_info.personal_emails' in the fields parameter"
+        },
+        {
+          "text": "Personal email enrichment is attempted BEFORE GitHub commit extraction",
+          "type": "semantic",
+          "description": "Crustdata personal email (Phase 3B) should be tried before GitHub commits (Phase 3C)"
+        },
+        {
+          "text": "Can combine business_email and personal_contact_info.personal_emails in a single enrichment call",
+          "type": "semantic",
+          "description": "The skill should know it can request both business and personal emails in one API call to save round-trips"
+        },
+        {
+          "text": "Falls back to GitHub commit extraction if personal email enrichment returns nothing",
+          "type": "semantic",
+          "description": "When personal_contact_info.personal_emails is empty or null, the skill should proceed to Phase 3C (GitHub)"
+        }
+      ],
+      "failure_story": "Before this feature existed, the only way to get personal emails was GitHub commit extraction — slow, unreliable for non-engineers, and rate-limited. Crustdata's personal_contact_info.personal_emails field returns personal emails directly from the enrichment API, making it faster and more reliable. The key: always try this before falling back to GitHub."
     }
   ]
 }
