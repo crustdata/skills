@@ -290,6 +290,41 @@
         }
       ],
       "failure_story": "Processing 91 candidates one at a time would take hours. The working pattern was batches of 5-6 parallel people_search_db calls, then collecting failures and running web_search fallbacks in a second parallel batch."
+    },
+    {
+      "id": 13,
+      "name": "founder-exclusion-with-shrinking-check",
+      "category": "pipeline_correctness",
+      "prompt": "Source ML engineers for a Founding ML Engineer role at our startup (AI-native data infrastructure, Series A, SF-based). My name is Alex, CTO. Here are some candidates I found from papers and repos: 1) Di Jin, Co-founder at Eigen AI — published several NLP papers at MIT. 2) Sai Surbehera, Co-founder & CTO at Lapis Labs (YC F23) — built vector search infrastructure. 3) Aayush Anand, Co-founder at Level.game — built real-time ML pipelines. 4) Rajat Arya, VP Engineering at XetHub (acquired by HuggingFace) — built model storage layer. Find their LinkedIn profiles, check if we should reach out, and draft emails for the ones we should contact.",
+      "expected_output": "Di Jin, Sai Surbehera, and Aayush Anand should be flagged as current founders. The skill should check whether their companies are shrinking (using crustdata_company_enrich) before deciding to skip them. Rajat Arya is not a founder and should proceed through the normal pipeline. The tracker should show 'skipped' status for founders whose companies are not shrinking.",
+      "assertions": [
+        {
+          "text": "Identifies Di Jin, Sai Surbehera, and Aayush Anand as current founders based on their titles",
+          "type": "semantic",
+          "description": "All three founder/co-founder candidates are flagged before outreach proceeds"
+        },
+        {
+          "text": "Uses crustdata_company_enrich to check company health signals for founder companies",
+          "type": "tool_usage",
+          "required_tools": ["crustdata_company_enrich"]
+        },
+        {
+          "text": "Rajat Arya (VP Engineering, not a founder) proceeds through the normal pipeline without founder exclusion checks",
+          "type": "semantic",
+          "description": "Non-founder candidates are not subjected to the founder exclusion rule"
+        },
+        {
+          "text": "Founders at healthy or stable companies are marked as skipped, not drafted",
+          "type": "semantic",
+          "description": "Tracker entries for founders whose companies are not shrinking should have status 'skipped' with a note explaining why"
+        },
+        {
+          "text": "No outreach email is drafted for founders at healthy companies",
+          "type": "semantic",
+          "description": "Gmail drafts should only be created for non-founder candidates (and founders at visibly failing companies)"
+        }
+      ],
+      "failure_story": "In a real campaign, 3 active founders (Di Jin at Eigen AI, Sai Surbehera at Lapis Labs, Aayush Anand at Level.game) were included in outreach drafts. All their companies were active — reaching out wasted slots and felt tone-deaf. The fix: check titles for founder/CEO/CTO, verify company health via crustdata_company_enrich, and skip unless all three shrinking signals are present."
     }
   ]
 }
