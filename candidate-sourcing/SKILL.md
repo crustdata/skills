@@ -415,6 +415,60 @@ This skill requires:
 
 ---
 
+## Founder exclusion rule
+
+**Do not reach out to current founders, co-founders, CEOs, or CTOs** — people who are actively running their own company. They are unlikely to leave, and contacting them wastes a slot and can feel tone-deaf.
+
+### How to detect founders
+
+Check the candidate's current title during Phase 1. Flag anyone whose title contains: Founder, Co-Founder, Co-founder, CEO, CTO, or "Chief" with "Officer" (e.g., Chief Technology Officer).
+
+### The shrinking-company exception
+
+The only case where it's worth reaching out to a current founder is when their company is visibly failing. All three conditions must be true:
+
+1. **Headcount is declining** — use `crustdata_company_enrich` with the company's domain:
+   ```
+   crustdata_company_enrich:
+     company_domain: "example.com"
+     fields: "company_name,headcount,web_traffic,founders"
+   ```
+   Check `headcount_latest.linkedin_headcount_total_growth_percent` — look for negative month-over-month and quarter-over-quarter growth.
+
+2. **Website traffic is declining** — in the same enrichment response, check `web_traffic` for downward trends in monthly visitors.
+
+3. **People are leaving faster than the company can sustain** — the number of ex-employees who left in the last 3 months is greater than the current headcount. This signals a company that's actively losing people, not just flat.
+
+If all three conditions are met, the founder may be open to a new opportunity. If any condition is NOT met (e.g., the company is small but growing), skip the candidate and mark them as `status: "skipped"` in the tracker with a note like `"Excluded — active founder (company not shrinking)"`.
+
+### Handling the enrichment response
+
+Company enrichment responses can exceed token limits. Parse with Python:
+```python
+import json
+with open(filepath) as f:
+    data = json.load(f)
+inner = json.loads(data[0]['text'])
+companies = inner['companies']
+for c in companies:
+    hc = c.get('headcount_latest', c.get('headcount', {}))
+    linkedin_hc = hc.get('linkedin_headcount', '?')
+    growth = hc.get('linkedin_headcount_total_growth_percent', {})
+    mom = growth.get('1_month', 0)
+    qoq = growth.get('3_months', 0)
+    print(f"{c['company_name']}: {linkedin_hc} employees, MoM: {mom}%, QoQ: {qoq}%")
+```
+
+### Real examples
+
+| Candidate | Company | What happened |
+|---|---|---|
+| Di Jin (Co-Founder) | Eigen AI (12 employees, -7.7% MoM) | Slightly declining but not enough ex-employees leaving → skipped |
+| Sai Surbehera (Co-Founder/CTO) | Lapis Labs (5 employees, +25% MoM) | Company growing → skipped |
+| Aayush Anand (Co-Founder) | Level.game (9 employees, stable) | Company active → skipped |
+
+---
+
 ## What NOT to do
 
 - **Never guess LinkedIn URLs** — always verify through Crustdata. Guessed URLs caused 12 errors in a single 91-person campaign.
@@ -422,3 +476,4 @@ This skill requires:
 - **Never use title-based openers** — always reference specific work the candidate has done.
 - **Never skip email validation** — discard noreply addresses, verify GitHub profiles belong to the right person.
 - **Never write the same opener twice** — each candidate gets a unique opener based on their specific work.
+- **Never reach out to active founders** — skip current founders/co-founders/CEOs/CTOs unless their company is visibly failing (declining headcount, declining traffic, and people leaving faster than the company can sustain). See "Founder exclusion rule" section above.
