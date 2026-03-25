@@ -1,0 +1,45 @@
+{
+  "skill_name": "email-enrichment",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find business and personal emails for these 5 people:\n1) Topher Conway, Managing Partner at SV Angel — linkedin.com/in/topherc\n2) Pete Koomen, General Partner at Y Combinator — linkedin.com/in/petekoomen\n3) Kaushik Iska, Engineer at ClickHouse — linkedin.com/in/kaushikiska\n4) Eric Migicovsky, Partner at Y Combinator — linkedin.com/in/ericmigicovsky\n5) Honglei Liu, Founder at TofuHQ — linkedin.com/in/honglliu",
+      "expected_output": "A table or structured output listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from GitHub commit history or web search fallbacks). Technical people should have GitHub-sourced personal emails where possible. Source attribution for each email found.",
+      "files": [],
+      "expectations": [
+        "Calls crustdata_people_enrich with fields including business_email",
+        "Batches all LinkedIn URLs into a single crustdata_people_enrich call (not one per person)",
+        "Searches for GitHub profiles for people identified as technical (Kaushik, Eric, Honglei)",
+        "Verifies GitHub profile identity before extracting commit emails",
+        "Does not search GitHub for non-technical people (Topher as VC)",
+        "Presents results in a clear table with source attribution for each email found"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I met these people at a conference. Can you find their business emails?\n1) Ali Kashani, CEO of Serve Robotics\n2) Will Drevno, Head of Engineering at Lyft\n3) Michael Ma, Partner at Liquid 2 Ventures\n4) Priya Sharma, ML Engineer at Google DeepMind",
+      "expected_output": "Resolves LinkedIn profiles for all 4 people using Crustdata people search (since no LinkedIn URLs provided), then enriches with business emails. Reports which people were found and which could not be resolved.",
+      "files": [],
+      "expectations": [
+        "Uses crustdata_people_search_db to resolve LinkedIn profiles from names and companies",
+        "Falls back to crustdata_web_search for people not found in the people database",
+        "Includes company context in searches to disambiguate common names",
+        "Proceeds to business email enrichment after resolving LinkedIn URLs",
+        "Reports which people could not be resolved and why"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need personal emails (gmail, etc.) for these engineers I want to recruit. Business emails won't work since I'm reaching out personally:\n1) Kaushik Iska, PeerDB/ClickHouse engineer\n2) Pete Koomen, previously at Optimizely\n3) Honglei Liu, Head of ML at Twitter / TofuHQ founder",
+      "expected_output": "Finds personal emails for all 3 technical people via GitHub commit history extraction. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search (Codeforces, personal sites) when GitHub doesn't yield results.",
+      "files": [],
+      "expectations": [
+        "Searches for GitHub profiles for all 3 people (all are technical)",
+        "Finds oldest non-fork repositories for GitHub commit email extraction",
+        "Validates extracted emails are not noreply/generated addresses",
+        "Falls back to web search (Codeforces, personal sites, etc.) when GitHub doesn't yield a personal email",
+        "Clearly indicates which emails are personal vs business in the output"
+      ]
+    }
+  ]
+}
