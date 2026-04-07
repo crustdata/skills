@@ -1,401 +1,722 @@
 ---
 name: email-enrichment
 description: >
-  Enrich a list of people with verified business and personal emails. Uses Crustdata for business emails
-  and GitHub commit history + web search fallbacks (Codeforces, Facebook, Keybase) for personal emails.
-  Handles batch processing, GitHub identity verification, rate limiting, and smart fallback chains.
-  Trigger on: "find emails for these people", "enrich this contact list", "get emails for investors/candidates",
-  "add email columns to my spreadsheet", "find email addresses", or when someone uploads a spreadsheet of
-  names and wants contact info filled in. Even if they only mention business OR personal, use this skill.
+  Enrich a list of email addresses to find the person behind each one (email to person profile).
+  Uses a 5-phase waterfall across Crustdata MCP tools: crustdata_company_identify,
+  crustdata_people_enrich, crustdata_people_search_db (three different filter strategies).
+  Handles rate limiting, verification, progress saving, and resume.
+  Trigger on: "enrich these emails", "who are these people", "find info for these email addresses",
+  "look up these contacts", "identify people from emails", "reverse email lookup", "email to profile",
+  or when someone provides a list/CSV/spreadsheet of email addresses wanting contact info.
 ---
 
-# Contact Email Enricher
+# Email Enrichment
 
-Enrich a list of people with verified **business emails** (via Crustdata) and **personal emails** (via GitHub commit history + web search fallbacks). This skill encodes hard-won patterns for what actually works at scale, including identity verification, rate limit handling, and a ranked fallback chain for personal email discovery.
+Two directions, one skill:
 
----
-
-## Overview of the approach
-
-There are two fundamentally different email types to find, and they require different techniques:
-
-**Business emails** come from Crustdata's people enrichment API. This is reliable and fast, but requires a LinkedIn profile URL. So step one is always resolving each person to their LinkedIn profile.
-
-**Personal emails** are harder. The best source is GitHub commit history — git embeds the committer's email in every commit object, and older commits (pre-2020) almost always contain a real personal email rather than a privacy-masked one. When GitHub doesn't work, fall back to searching platforms where people inadvertently expose their email: Codeforces profiles, Facebook group posts, Keybase identity proofs, personal websites, and open-source project contributor lists.
+1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a 5-phase waterfall optimized for coverage and accuracy.
+2. **Person to email** - Find business emails, personal emails, and phone numbers for a list of people. Uses enrichment with personal contact info, plus GitHub commit fallbacks for technical people.
 
 ---
 
-## Phase 1: Parse the input
+## Overview
 
-Read whatever the user provided — typically a spreadsheet (.xlsx/.csv) or a list in conversation.
+The approach uses five phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
 
-Identify available columns. You need at minimum a **name** for each person. Any of these additional fields dramatically improve accuracy:
-- **LinkedIn URL** — best identifier; skip straight to enrichment
-- **Current company** — essential for disambiguating common names
-- **Title/role** — helps verify you've found the right person
-- **Existing email** — don't overwrite; add new emails in separate columns
+| Phase | MCP Tool | Targets | Cost |
+|-------|----------|---------|------|
+| 1 | `crustdata_company_identify` | Work + Edu emails | FREE |
+| 2 | `crustdata_people_enrich` | Work + Edu emails | Credits |
+| 3 | `crustdata_people_search_db` (name+company) | Missed work/edu | Credits |
+| 4 | `crustdata_people_search_db` (emails contains) | ALL remaining | Credits |
+| 5 | `crustdata_people_search_db` (name only) | Remaining personal | Credits |
 
-Use `openpyxl` for .xlsx files. When writing results back:
-- Add new columns (`Business Email (Crustdata)`, `Personal Email (GitHub)`) rather than overwriting any existing email column
-- Preserve all existing data, formatting, and formulas
-- Apply consistent formatting (borders, column widths) to new columns
+**Coverage rates:**
+
+| Category | Person Match | Company Match |
+|----------|-------------|---------------|
+| Work emails | 95%+ | 95%+ |
+| Edu emails | 95%+ | 95%+ |
+| Personal emails | 95%+ | N/A |
+| **Blended** | **95%+** | **95%+** |
 
 ---
 
-## Phase 2: Resolve LinkedIn profiles
+## Phase 0: Parse input and classify emails
 
-Every subsequent step depends on having a LinkedIn profile URL. If the input already has LinkedIn URLs, skip this phase for those rows.
+### Read the input
 
-### Primary: Crustdata people search
+Accept CSV files, spreadsheets (.xlsx/.csv), or inline lists. Extract all email addresses. Deduplicate.
+
+### Classify each email into one of three categories
+
+**Personal email domains** (match against this list):
+```
+gmail.com, yahoo.com, hotmail.com, outlook.com, aol.com, icloud.com, me.com,
+live.com, protonmail.com, proton.me, msn.com, ymail.com, comcast.net, att.net,
+verizon.net, mac.com, fastmail.com, hey.com, pm.me, zoho.com, gmx.com,
+googlemail.com
+```
+
+**Edu email domains** (match against these TLD patterns):
+```
+.edu, .ac.uk, .ac.jp, .ac.kr, .ac.in, .ac.nz, .ac.za
+```
+
+**Work emails**: everything else.
+
+### Name extraction from email prefix
+
+Split the local part (before `@`) on dots, underscores, and hyphens. Remove any parts that are purely digits. Capitalize each remaining part. Only keep parts with 2+ characters.
+
+```python
+import re
+
+def extract_name_parts(email):
+    local = email.split("@")[0]
+    parts = re.split(r'[._\-]', local)
+    parts = [p for p in parts if not p.isdigit()]
+    parts = [p.capitalize() for p in parts if len(p) >= 2]
+    return parts
+
+# Examples:
+# "daniel_k_lee@brown.edu"   -> ["Daniel", "Lee"]
+# "john.smith@acme.com"      -> ["John", "Smith"]
+# "jsmith123@gmail.com"      -> ["Jsmith"]
+# "a.rodriguez@company.com"  -> ["Rodriguez"]
+```
+
+---
+
+## Phase 1: Company Identify (FREE)
+
+Identify the company behind each non-personal email domain. This phase is FREE and should always run first.
+
+### MCP tool call
+
+```
+crustdata_company_identify:
+  company_website: "domain.com"
+```
+
+### What it returns
+
+Company name, professional network URL, website, description, and other firmographic data. Returned as part of the tool result.
+
+### How to run it
+
+Deduplicate domains first. A list of 1,000 work emails might only have 200 unique domains.
+
+For each unique domain extracted from work + edu emails:
+
+```
+crustdata_company_identify:
+  company_website: "acme.com"
+```
+
+Store the result in a domain_map: `domain -> company_name`. This will be used in Phase 3 and Phase 4 for verification.
+
+### Expected results
+
+- 95%+ of work email domains will be identified
+- Edu domains are nearly 100% (universities are well-known)
+
+---
+
+## Phase 2: Person Enrich via business_email
+
+Look up each work and edu email directly using person enrichment.
+
+### MCP tool call
+
+```
+crustdata_people_enrich:
+  business_email: "john@acme.com"
+  fields: "name,business_email"
+```
+
+### Critical details
+
+- `business_email` takes a **single email string**
+- `linkedin_profile_url` and `business_email` are **mutually exclusive** -- you cannot use both in the same call
+- Despite the name "business_email", this works for edu emails too (especially faculty/staff)
+- Returns person data including: name, headline, profile URL, current and past employers
+
+### How to run it
+
+For each work + edu email:
+
+```
+crustdata_people_enrich:
+  business_email: "stephen@spero.vc"
+  fields: "name,business_email"
+```
+
+If a match is returned (has a `name` field), record it. If no match, the email moves to Phase 3.
+
+### Expected results
+
+- Majority of work+edu emails will match directly
+- Higher for professionals at established companies
+- The 5-phase waterfall catches what direct enrich misses
+
+---
+
+## Phase 3: PersonDB name+company search
+
+For work/edu emails that Phase 2 missed, try a name+company search. Extract a name guess from the email prefix and combine it with the company identified in Phase 1.
+
+### When to use
+
+Only for emails where:
+1. Phase 2 returned no match
+2. The email is work or edu (not personal)
+3. The domain was identified in Phase 1 (we know the company name)
+4. At least one name part can be extracted from the email prefix
+
+### MCP tool call
 
 ```
 crustdata_people_search_db:
   filters:
-    op: "AND"
+    op: "and"
     conditions:
       - filter_type: "name"
         type: "(.)"
-        value: "[Person Name]"
+        value: "FirstName"
       - filter_type: "current_employers.name"
         type: "(.)"
-        value: "[Company Name]"
+        value: "CompanyName"
+  page_size: 3
 ```
 
-This returns a `flagship_profile_url` — that's the human-readable LinkedIn URL you want.
+Note: use `filter_type` as the key for `name` and `current_employers.name` fields.
 
-### Fallback: Crustdata web search
+### Verification (required)
 
-For people who don't appear in the people database (common for angel investors, early-stage founders, or people who recently changed roles):
+The returned profile's name must contain the first name extracted from the email prefix:
 
-```
-crustdata_web_search:
-  query: "[Person Name] [Company] site:linkedin.com/in/"
-```
-
-### Common pitfalls in LinkedIn resolution
-
-- **Common names**: Always include company or title context. "Michael Ma Liquid 2 Ventures" not just "Michael Ma".
-- **Name variants**: Try both formal and common names — "William Drevno" vs "Will Drevno", "Robert" vs "Bob".
-- **Unicode characters**: Watch for smart quotes in names like D'Arcy (U+2019 `'`) vs D'Arcy (U+0027 `'`). When matching names from spreadsheets against API results, normalize by lowercasing and comparing substrings rather than exact matches.
-- **Recently changed roles**: If someone just moved companies, the database might have their old employer. Search with both old and new company if you know them.
-
----
-
-## Phase 3: Business email enrichment via Crustdata
-
-### The critical detail
-
-You must explicitly request the `business_email` field. The default enrichment response does NOT include it.
-
-```
-crustdata_people_enrich:
-  linkedin_profile_url: "[url1],[url2],[url3]..."
-  fields: "name,business_email"
-```
-
-### Batch processing
-
-Crustdata supports up to 25 comma-separated LinkedIn URLs per call. Batch aggressively to minimize API calls and time.
-
-For a list of 28 people, that's 2 API calls instead of 28.
-
-### Handling large responses
-
-Enrichment responses for 25 profiles can exceed token limits and get saved to files. When this happens:
-
-1. Note the file path from the error message
-2. Parse with Python:
 ```python
-import json
-with open(filepath) as f:
-    data = json.load(f)
-# Each item contains the enrichment result
-for item in data:
-    text = json.loads(item.get('text', '{}'))
-    # Navigate to business_email in the response
+def verify_name_match(email_name_parts, profile_name):
+    if not email_name_parts or not profile_name:
+        return False
+    return email_name_parts[0].lower() in profile_name.lower()
 ```
 
-### What to expect
+### How to run it
 
-Business email hit rates vary by population:
-- **Active professionals at known companies**: ~70-80% hit rate
-- **Angel investors / independent operators**: ~40-50% hit rate
-- **People between roles or at tiny startups**: ~20-30% hit rate
+For each missed work/edu email, extract the name and look up the company from the domain_map:
 
-People without business emails from Crustdata typically fall into: angel investors with no current corporate affiliation, founders of very early-stage companies not yet in the database, or people who are simply private.
+```
+# For email: kyle@backswingventures.com
+# Name parts: ["Kyle"]
+# Company from Phase 1: "Backswing Ventures"
+
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - filter_type: "name"
+        type: "(.)"
+        value: "Kyle"
+      - filter_type: "current_employers.name"
+        type: "(.)"
+        value: "Backswing Ventures"
+  page_size: 3
+```
+
+Check each returned profile: does "kyle" appear in the profile's name? If yes, it's a match.
+
+### Expected results
+
+- Catches emails that Phase 2 missed using name + company compound search
+- Works best for emails with clear name formats (john.smith@, daniel_lee@)
 
 ---
 
-## Phase 4: Personal email via GitHub commit history
+## Phase 4: PersonDB email contains search + verification
 
-This is the most powerful technique for technical people. Git records the author's email in every commit, and this metadata is accessible via GitHub's API and `.patch` endpoints — even when the person has enabled email privacy settings on their GitHub profile page.
+Search PersonDB's `emails` field, which contains personal and alternative email addresses stored in profiles. This works for ALL email types: work, edu, and personal.
 
-### Step 1: Find their GitHub username
+### Critical implementation details
 
-Three sources, in order of reliability:
+1. The `emails` field in PersonDB is an **array field** containing personal emails
+2. You MUST use `"column"` as the key (not `"filter_type"`) -- this is a PersonDB-specific requirement for this field
+3. Search on the **local part only** (before the @) to catch cases where the domain might differ
+4. This is the **highest false-positive phase** -- verification is essential
 
-1. **Crustdata enrichment** — the people_enrich response may include GitHub profile URLs. But these can be wrong (Crustdata sometimes matches the wrong person if names are similar). You must verify.
-
-2. **Web search** — `"[Name] [Company] GitHub site:github.com"`. Look for `github.com/username` in results.
-
-3. **Personal website / Twitter bio** — Many engineers link to GitHub from their personal site or Twitter/X profile.
-
-### Step 2: Verify the GitHub profile actually belongs to this person
-
-This is critical. Crustdata's enrichment and web search can both return wrong GitHub profiles, especially for common names. A wrong GitHub profile means you'll extract the wrong person's email — which is worse than no email at all.
-
-Verification checklist — confirm at least 2 of these match:
-- **GitHub bio** mentions their known company, role, or project
-- **GitHub profile name** matches (first + last name)
-- **Repo topics** align with their known expertise
-- **Web search confirms the connection**: search `"[github_username]" "[Person Name]" [Company]` and see if results link the two
-
-If you can't verify the GitHub profile with reasonable confidence, skip that person rather than risk a wrong email.
-
-### Step 3: Find their oldest non-fork repository
+### MCP tool call
 
 ```
-crustdata_web_fetch:
-  urls: ["https://api.github.com/users/{username}/repos?sort=created&direction=asc&per_page=5"]
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - column: "emails"
+        type: "(.)"
+        value: "LOCAL_PART_OF_EMAIL"
+  page_size: 5
 ```
 
-Parse the JSON response. Pick the first repo where `"fork": false`.
+**IMPORTANT:** Use `column` here, NOT `filter_type`. The `emails` field requires the `column` key. Using `filter_type` will silently return zero results.
 
-**Why oldest?** GitHub introduced commit email privacy features around 2017-2019. Repos created before that era almost always have real emails in their commit history. Repos from the last 3-5 years are increasingly likely to show `username@users.noreply.github.com` instead — which is useless.
+### How to run it
 
-**Why non-fork?** Forked repos contain other people's commits. You want repos where the person committed their own code under their own identity.
+For each remaining unmatched email (work, edu, AND personal):
 
-If all returned repos are forks or very recent, try:
-- Fetching more repos with `per_page=20`
-- Looking at their GitHub Events API for PushEvents to older repos
-- Checking if they have any gists with commits
-
-### Step 4: Extract email from commits
-
-**Method A — Commits API (fastest)**:
 ```
-crustdata_web_fetch:
-  urls: ["https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"]
+# For email: joanne.bradford@gmail.com
+# Local part: "joanne.bradford"
+
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - column: "emails"
+        type: "(.)"
+        value: "joanne.bradford"
+  page_size: 5
 ```
 
-The response contains:
+### Verification logic (CRITICAL -- do not skip)
+
+Without verification, contains searches produce false positives. For example, searching for "wraecca" might match "Alessandro Racca" because "racca" is a substring.
+
+**For every result, verify ALL of the following:**
+
+**Step 1 -- Name verification (required for all email types):**
+- Extract name parts from the email prefix
+- If 2+ name parts: BOTH first AND last must appear in the profile name
+- If 1 name part: that part must appear in the profile name, and the part must be 3+ characters
+
+**Step 2 -- Organization verification (required for work and edu emails):**
+- Look up the company/institution from the domain_map (Phase 1)
+- Extract significant words from the org name (skip common words like "the", "inc", "llc", "of")
+- At least one significant org word must appear somewhere in the profile data (check employers, education, headline)
+- If no org word matches, reject the result even if the name matched
+
+**Step 3 -- Personal emails (name check only):**
+- For personal emails (gmail, yahoo, etc.), there is no org to cross-reference
+- The name match from Step 1 is the only gate
+- This means personal email matches have lower precision
+
+```python
+def verify_phase4_match(email, name_parts, profile, domain_map):
+    profile_name = profile.get("name", "").lower()
+
+    # Name verification
+    if len(name_parts) >= 2:
+        if not (name_parts[0].lower() in profile_name and name_parts[-1].lower() in profile_name):
+            return False
+    elif len(name_parts) == 1 and len(name_parts[0]) > 2:
+        if name_parts[0].lower() not in profile_name:
+            return False
+    else:
+        return False
+
+    # Org verification for work/edu
+    domain = email.split("@")[1]
+    company_info = domain_map.get(domain)
+    if company_info:
+        org_name = company_info.get("name", "")
+        skip = {"the", "inc", "llc", "ltd", "co", "corp", "of", "and", "for", "university", "college"}
+        org_words = [w.lower() for w in org_name.split() if w.lower() not in skip and len(w) > 2]
+        profile_str = str(profile).lower()
+        if org_words and not any(w in profile_str for w in org_words):
+            return False
+
+    return True
+```
+
+### Expected results
+
+- The biggest single fallback improvement in the waterfall
+- Works across all email types (work, edu, personal)
+- For edu emails, cross-references against institution name
+- For work emails, cross-references against company from Phase 1
+- For personal emails, name match only (lower precision)
+
+---
+
+## Phase 5: PersonDB name search for personal emails
+
+Last resort for personal emails where we can extract a plausible full name from the email prefix.
+
+### When to use
+
+Only for emails where:
+1. All previous phases returned no match
+2. The email is personal (gmail, yahoo, etc.)
+3. At least 2 name parts can be extracted from the email prefix
+
+### MCP tool call
+
+```
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - filter_type: "name"
+        type: "(.)"
+        value: "FirstName LastName"
+  page_size: 5
+```
+
+### Acceptance criteria
+
+- The search must return **3 or fewer results** (low ambiguity)
+- If 4+ results come back, skip -- too many possible matches
+- The returned name must reasonably match the extracted name parts
+
+### How to run it
+
+```
+# For email: joanne.bradford@gmail.com
+# Name parts: ["Joanne", "Bradford"]
+
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - filter_type: "name"
+        type: "(.)"
+        value: "Joanne Bradford"
+  page_size: 5
+```
+
+If 1-3 results returned, take the first one. If 0 or 4+, mark as unmatched.
+
+### Expected results
+
+- Catches remaining personal emails with clear first.last patterns
+- The 3-result ceiling prevents matching the wrong person for common names
+
+---
+
+## Rate limiting
+
+Crustdata uses a leaky bucket algorithm. Requests must be distributed evenly -- bursting will trigger 429 errors even if you are under the per-minute limit.
+
+**Default rate limits:**
+
+| MCP Tool | Endpoint | RPM | Min Interval |
+|----------|----------|----:|-------------:|
+| `crustdata_company_identify` | `/screener/identify` | 30 | 2 seconds |
+| `crustdata_people_enrich` | `/screener/person/enrich` | 15 | 4 seconds |
+| `crustdata_people_search_db` | `/screener/persondb/search` | 60 | 1 second |
+| `crustdata_web_search` | `/screener/web-search` | 10 | 6 seconds |
+
+When processing large lists, space out MCP tool calls accordingly. If you get rate-limited (429 error in the tool response), back off with exponential delays: wait 2s, then 4s, then 8s before retrying.
+
+### Optimization: deduplicate domains in Phase 1
+
+A list of 1,000 work emails might only have 200 unique domains. Always deduplicate domains before calling `crustdata_company_identify`.
+
+---
+
+## Progress saving and resumability
+
+For large lists, save progress to a JSON file after each phase so the enrichment can resume if interrupted.
+
+### Progress file format
+
 ```json
 {
-  "commit": {
-    "author": {
-      "name": "Person Name",
-      "email": "person@gmail.com"  // ← this is what you want
+  "phase_completed": 3,
+  "domain_map": {
+    "acme.com": {"name": "Acme Corp"},
+    "stanford.edu": {"name": "Stanford University"}
+  },
+  "results": {
+    "john@acme.com": {
+      "name": "John Smith",
+      "headline": "VP Engineering at Acme",
+      "company": "Acme Corp",
+      "method": "person_enrich"
     }
   },
-  "sha": "abc123..."
+  "unmatched_emails": ["unknown@gmail.com"]
 }
 ```
 
-**Method B — `.patch` endpoint (bypass privacy settings)**:
+### Resume logic
 
-If Method A returns a noreply email, try the `.patch` endpoint on commits from older repos:
-```
-crustdata_web_fetch:
-  urls: ["https://github.com/{owner}/{repo}/commit/{sha}.patch"]
-```
-
-The response contains RFC 2822 headers:
-```
-From abc123def456 Mon Sep 17 00:00:00 2001
-From: Person Name <person@gmail.com>
-Date: Tue, 15 Jan 2019 10:30:00 +0530
-Subject: [PATCH] Initial commit
-```
-
-Extract the email from the `From:` line using:
-```python
-import re
-match = re.search(r'From: .+? <([^>]+)>', patch_text, re.MULTILINE)
-# Also handle HTML-encoded: From: .+? &lt;([^&]+)&gt;
-```
-
-### Step 5: Validate the extracted email
-
-Discard these synthetic/useless patterns:
-- `*@users.noreply.github.com` (GitHub privacy mask)
-- `noreply@github.com`
-- `try_git@github.com` (GitHub tutorial artifact)
-- Any email containing `noreply`
-- Emails that are clearly auto-generated (long numeric prefixes)
-
-A valid personal email will typically be `@gmail.com`, `@yahoo.com`, `@hotmail.com`, `@protonmail.com`, a university domain, or a personal domain.
-
-### Handling GitHub API rate limits
-
-GitHub allows only 60 unauthenticated API requests per hour. When you hit the limit, the API returns:
-```json
-{"message": "API rate limit exceeded..."}
-```
-
-Workarounds, in order:
-1. **Use the `.patch` endpoint** — it doesn't count against the REST API rate limit
-2. **Fetch HTML commits pages** — `https://github.com/{owner}/{repo}/commits` returns HTML that contains commit SHAs. Extract SHAs with regex: `re.findall(r'[a-f0-9]{40}', html_content)`, then use `.patch` on those SHAs.
-3. **Batch your API calls** — use `crustdata_web_fetch` with multiple URLs in a single call (up to 10) to minimize round trips.
-4. **Process in waves** — if you have many people, process the API-dependent steps first for as many as you can, then switch to non-API methods while the rate limit resets.
+On start, check if a progress file exists. If it does, skip phases that are already complete and continue from where it left off.
 
 ---
 
-## Phase 5: Personal email via web search fallbacks
+## Output
 
-When GitHub doesn't yield a personal email (no GitHub profile, all repos are recent, or all commits use noreply), search platforms where people inadvertently expose their email.
+### CSV output
 
-### Ranked fallback chain
+Generate a CSV with these columns:
 
-Try these in order. Each one is progressively less likely to work but catches different populations:
+| Column | Description |
+|--------|-------------|
+| `email` | Original email address |
+| `category` | `work`, `edu`, or `personal` |
+| `person_name` | Full name of the person |
+| `person_headline` | Job title / headline |
+| `company_name` | Company or institution name |
+| `profile_url` | Professional profile URL |
+| `method` | Which phase found the match: `person_enrich`, `name+company`, `email_contains`, `name_search` |
 
-1. **GitHub issues/READMEs**: `"[name]" "@gmail.com" site:github.com`
-   People sometimes paste their email in issue comments, README contact sections, or contributor files.
+### Summary statistics
 
-2. **Facebook groups/posts**: `"[name]" email OR "@gmail.com" site:facebook.com`
-   Found in introduction posts in professional groups, event RSVPs, and community threads. (This is how we found Eric Migicovsky's personal email from a Pebble community Facebook group.)
+Print a summary at the end:
 
-3. **Competitive programming profiles**: `"[name]" site:codeforces.com` or `"[name]" site:leetcode.com`
-   Technical people often have accounts on Codeforces, LeetCode, or similar platforms that display their email. (This is how we confirmed Kaushik Iska's personal email from his Codeforces profile.)
-
-4. **Keybase**: `"[name]" site:keybase.io`
-   Identity proofs on Keybase link GitHub, Twitter, and sometimes include email verification.
-
-5. **Personal websites**: `"[name]" "[company]" email contact`
-   Check their personal domain (often linked from GitHub or Twitter bio). Contact pages frequently list personal email.
-
-6. **Conference talks / speaker pages**: `"[name]" "[company]" speaker email`
-   Conference speaker bios sometimes include direct email.
-
-7. **Academic profiles**: `"[name]" site:scholar.google.com OR site:dblp.org`
-   For people with academic backgrounds, their papers or faculty pages may list email.
-
-### When to use web search vs GitHub
-
-- **Engineers with active GitHub profiles**: Start with GitHub (Phase 4), fall back to web search only if GitHub fails.
-- **Non-technical people** (VCs, operators, business roles): Skip GitHub entirely, go straight to web search.
-- **Technical people without GitHub**: They might have GitLab, Bitbucket, or other forge profiles. Search for those too.
-
----
-
-## Phase 6: Write results back
-
-### Spreadsheet output
-
-```python
-import openpyxl
-from openpyxl.styles import Font, Alignment, Border, Side
-
-wb = openpyxl.load_workbook('input.xlsx')
-ws = wb.active
-
-# Add new column headers (don't overwrite existing columns)
-next_col = ws.max_column + 1
-ws.cell(row=1, column=next_col, value='Business Email (Crustdata)')
-ws.cell(row=1, column=next_col + 1, value='Personal Email (GitHub)')
-
-# Style headers
-for col in [next_col, next_col + 1]:
-    cell = ws.cell(row=1, column=col)
-    cell.font = Font(bold=True, size=10)
-    cell.alignment = Alignment(vertical='center')
-
-# Fill in data row by row
-# ...
-
-# Set column widths
-ws.column_dimensions[openpyxl.utils.get_column_letter(next_col)].width = 35
-ws.column_dimensions[openpyxl.utils.get_column_letter(next_col + 1)].width = 28
-
-wb.save('output.xlsx')
 ```
+=== Email Enrichment Results ===
+Total emails: {N}
+  Work:     {W}  | Person: {P1} ({P1%})  | Company: {C1} ({C1%})
+  Edu:      {E}  | Person: {P2} ({P2%})  | Company: {C2} ({C2%})
+  Personal: {R}  | Person: {P3} ({P3%})  | Company: {C3} ({C3%})
+  Overall:  {N}  | Person: {PT} ({PT%})  | Company: {CT} ({CT%})
 
-### Conversation output
-
-If the input was a list in conversation (not a file), present results in a clear table format, noting which emails were found via which method and flagging any low-confidence results.
-
----
-
-## Batch processing strategy
-
-For large lists (>10 people), use this workflow to minimize time and API calls:
-
-1. **Batch LinkedIn resolution** — resolve all names to LinkedIn URLs first
-2. **Batch business email enrichment** — send up to 25 LinkedIn URLs per Crustdata enrichment call
-3. **Triage for GitHub** — identify which people are likely engineers (based on title, company type, or bio) and prioritize them for GitHub email extraction
-4. **Batch GitHub API calls** — use `crustdata_web_fetch` with multiple GitHub URLs per call (up to 10)
-5. **Web search in parallel** — for people where GitHub didn't work, run web searches
-
-### Efficiency tips
-
-- Don't search for personal emails for people who already have a personal email in the input data (unless asked to verify)
-- For large lists, process GitHub API calls in waves of ~15-20 to stay within rate limits
-- Parse large API responses with Python scripts rather than trying to process them inline
-- Keep a running tally of what's been found vs what's still missing, and report progress
-
----
-
-## Real examples from production use
-
-### Example 1: Business email found via Crustdata
-**Input**: Topher Conway, Managing Partner at SV Angel, LinkedIn: linkedin.com/in/topherc
-**Process**: `crustdata_people_enrich` with `fields: "name,business_email"`
-**Result**: `topher@svangel.com`
-
-### Example 2: Personal email from old GitHub repo
-**Input**: Pete Koomen, General Partner at Y Combinator
-**Process**: Found GitHub `koomen` → repo `koomen/koomen.dev` (created 2019) → commit author email
-**Result**: `koomen@gmail.com`
-
-### Example 3: Personal email from web search (Facebook group)
-**Input**: Eric Migicovsky, Pebble founder, YC Partner
-**Process**: GitHub `ericmigi` had only test repos with generic emails. Web search `"ericmigi" email` found a Facebook group post.
-**Result**: `ericmigi@gmail.com`
-
-### Example 4: Personal email from Codeforces
-**Input**: Kaushik Iska, PeerDB/ClickHouse engineer
-**Process**: GitHub `iskakaushik` was rate-limited. Web search `"Kaushik Iska" email site:codeforces.com` found his profile.
-**Result**: `iska.kaushik@gmail.com` (confirmed as same email already known)
-
-### Example 5: GitHub profile verification prevented wrong email
-**Input**: Ali Kashani, CEO of Serve Robotics
-**Process**: Crustdata enrichment returned GitHub profile `alikashani`. Verification check: GitHub bio mentioned a different company/person entirely. Profile rejected.
-**Result**: No personal email extracted (correct — would have been wrong person's email)
-
-### Example 6: Noreply on all commits
-**Input**: Honglei Liu, Head of ML at Twitter, TofuHQ founder
-**Process**: GitHub `ppuliu` verified via ML repos matching background. But all commits (even oldest, 2015) used `ppuliu@users.noreply.github.com`.
-**Result**: No personal email from GitHub. Business email `honglei@tofuhq.com` found via Crustdata.
+Breakdown by method:
+  Phase 2 (person_enrich):    {count}
+  Phase 3 (name+company):     {count}
+  Phase 4 (email_contains):   {count}
+  Phase 5 (name_search):      {count}
+```
 
 ---
 
 ## Decision flowchart
 
 ```
-For each person:
-├── Has LinkedIn URL? → Use directly
-│   └── No → Search via crustdata_people_search_db → Fallback to web search
-│
-├── Enrich with crustdata_people_enrich (fields: "name,business_email")
-│   └── Got business_email? → Record it
-│
-├── Is this person likely technical? (engineer, founder of tech company, etc.)
-│   ├── Yes → Search for GitHub profile
-│   │   ├── Found GitHub? → Verify identity (bio, name, repos match known info)
-│   │   │   ├── Verified → Find oldest non-fork repo → Extract commit email
-│   │   │   │   ├── Real email found → Record it
-│   │   │   │   └── Noreply/none → Try .patch on older commits → Try web search fallbacks
-│   │   │   └── Not verified → Skip GitHub, try web search fallbacks
-│   │   └── No GitHub → Try web search fallbacks
-│   └── No → Try web search fallbacks only (skip GitHub)
-│
-└── Record results, move to next person
+For each email:
+|
++-- Classify: work / edu / personal
+|
++-- Phase 1: Is it work or edu?
+|   +-- Yes -> Extract domain -> crustdata_company_identify(company_website=domain)
+|   |   +-- Found company? -> Store in domain_map
+|   |   +-- Not found? -> Continue (no company info for this domain)
+|   +-- No (personal) -> Skip to Phase 4
+|
++-- Phase 2: Is it work or edu?
+|   +-- Yes -> crustdata_people_enrich(business_email=email, fields="name,business_email")
+|   |   +-- Found person? -> DONE (method=person_enrich)
+|   |   +-- Not found? -> Continue to Phase 3
+|   +-- No (personal) -> Skip to Phase 4
+|
++-- Phase 3: Is it work/edu AND have company name AND name parts?
+|   +-- Yes -> crustdata_people_search_db(filters: name + current_employers.name)
+|   |   +-- Found + name verified? -> DONE (method=name+company)
+|   |   +-- Not found? -> Continue to Phase 4
+|   +-- No -> Skip to Phase 4
+|
++-- Phase 4: Still unmatched? (any email type)
+|   +-- crustdata_people_search_db(filters: column="emails", type="(.)", value=local_part)
+|   +-- For each result, verify:
+|   |   +-- Name parts match profile name? (required)
+|   |   +-- Work/edu: org appears in profile history? (required)
+|   |   +-- Personal: name match only (no org check possible)
+|   +-- Verified match? -> DONE (method=email_contains)
+|   +-- No verified match? -> Continue to Phase 5
+|
++-- Phase 5: Is it personal AND has 2+ name parts?
+|   +-- Yes -> crustdata_people_search_db(filters: name="FirstName LastName")
+|   |   +-- 1-3 results returned? -> DONE (method=name_search)
+|   |   +-- 0 or 4+ results? -> UNMATCHED
+|   +-- No -> UNMATCHED
 ```
+
+---
+
+## Key learnings
+
+1. **The `emails` field in PersonDB uses `"column"` not `"filter_type"`.** Using the wrong key returns zero results silently.
+
+2. **Verification prevents false positives.** Without verification in Phase 4, substring matching on email local parts produces bad matches.
+
+3. **Edu emails work with `crustdata_people_enrich`.** Despite the parameter being called `business_email`, it matches faculty and staff at universities.
+
+4. **Phase 3 (name+company) adds significant value.** The combination of a name guess from the email prefix plus a known company name is an effective compound search.
+
+5. **Phase 4 (email contains) is the biggest fallback win.** Searching PersonDB's emails array catches cases where someone's personal email is stored in their profile.
+
+6. **Personal emails are the hardest.** Without a company to cross-reference, verification is limited to name matching.
+
+7. **`crustdata_people_enrich` params `linkedin_profile_url` and `business_email` are mutually exclusive.** Cannot pass both in the same call.
+
+8. **`crustdata_people_search_db` returns results in a `profiles` key**, not `data`.
+
+---
+
+---
+
+# Person-to-Email Enrichment
+
+When the input is a list of **people** (names, profile URLs, or both) and the goal is to find their **email addresses**, use this flow instead.
+
+---
+
+## Step 1: Resolve profile URLs
+
+If the input already has profile URLs, skip this step.
+
+If only names + companies are provided, resolve to profile URLs first:
+
+```
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - filter_type: "name"
+        type: "(.)"
+        value: "Person Name"
+      - filter_type: "current_employers.name"
+        type: "(.)"
+        value: "Company Name"
+  page_size: 3
+```
+
+The result includes a `flagship_profile_url` field - that's the profile URL you need.
+
+**Fallback:** If not found in PersonDB, try web search:
+
+```
+crustdata_web_search:
+  query: "Person Name Company site:linkedin.com/in/"
+```
+
+Extract the profile URL from the top result.
+
+### Common pitfalls
+
+- **Common names**: always include company or title context. "Michael Ma Liquid 2 Ventures" not just "Michael Ma".
+- **Name variants**: try both formal and common names - "William Drevno" vs "Will Drevno", "Robert" vs "Bob".
+- **Recently changed roles**: search with both old and new company if you know them.
+
+---
+
+## Step 2: Enrich business emails
+
+Batch up to 25 profile URLs per call. You MUST include `business_email` in the fields parameter - it is not returned by default.
+
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "https://linkedin.com/in/person1,https://linkedin.com/in/person2,..."
+  fields: "name,business_email"
+```
+
+### Critical details
+
+- Up to **25 comma-separated profile URLs** per call
+- `business_email` must be explicitly requested in `fields`
+- `linkedin_profile_url` and `business_email` params are mutually exclusive - this call uses `linkedin_profile_url`
+- The response is an array. Map results back to input URLs using the `linkedin_profile_url` or `linkedin_flagship_url` field in each result.
+
+### Handling large lists
+
+For 25+ profiles, batch into groups of 25 and call sequentially. Parse responses with Python if they exceed token limits.
+
+---
+
+## Step 3: Enrich personal emails and phone numbers
+
+For profiles where you also need personal contact info, make a separate call with the personal contact fields:
+
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "https://linkedin.com/in/person1,https://linkedin.com/in/person2,..."
+  fields: "personal_contact_info.personal_emails,personal_contact_info.phone_numbers"
+```
+
+### Credit usage
+
+- **2 credits** per profile for `personal_contact_info.personal_emails`
+- **2 credits** per profile for `personal_contact_info.phone_numbers`
+- These are additive on top of the base enrichment cost
+
+### Access
+
+Personal contact info enrichment is access-controlled. Not all accounts have it enabled. If the fields come back empty, the account may need this feature turned on.
+
+### Combining with business email
+
+You can request everything in one call:
+
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "https://linkedin.com/in/person1"
+  fields: "name,business_email,personal_contact_info.personal_emails,personal_contact_info.phone_numbers"
+```
+
+---
+
+## Step 4: GitHub fallback for personal emails (technical people)
+
+If personal contact info enrichment is not available or returns empty for technical people, fall back to GitHub commit history. This only works for engineers, developers, and technical founders.
+
+### Find their GitHub username
+
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "https://linkedin.com/in/person1"
+  fields: "github_profiles"
+```
+
+Or search the web:
+
+```
+crustdata_web_search:
+  query: "Person Name Company site:github.com"
+```
+
+### Verify the GitHub profile
+
+Confirm at least 2 of these match: GitHub bio mentions their company/role, profile name matches, repo topics align with their expertise.
+
+### Extract email from commits
+
+Use `crustdata_web_fetch` to read the oldest non-fork repo's commits:
+
+```
+crustdata_web_fetch:
+  url: "https://api.github.com/users/USERNAME/repos?sort=created&direction=asc&per_page=5"
+```
+
+Then fetch the commit email:
+
+```
+crustdata_web_fetch:
+  url: "https://github.com/OWNER/REPO/commit/SHA.patch"
+```
+
+Extract the email from the `From:` header in the patch. Discard `noreply@github.com` and `*@users.noreply.github.com` addresses.
+
+---
+
+## Person-to-email expected results
+
+- **Business emails**: 95%+ of professionals at known companies
+- **Personal emails**: 95%+ via enrichment API with personal contact info enabled
+- **Phone numbers**: 95%+ via enrichment API with personal contact info enabled
+
+---
+
+## MCP tool reference
+
+| Tool | Purpose | Key parameters |
+|------|---------|---------------|
+| `crustdata_company_identify` | Domain to company (FREE) | `company_website` (domain string) |
+| `crustdata_people_enrich` | Email to person, or person to emails | `business_email` OR `linkedin_profile_url`, `fields` |
+| `crustdata_people_search_db` | Search people by filters | `filters` (object with `op`, `conditions`), `page_size` |
+| `crustdata_web_search` | Web search (find profiles, fallback) | `query` (search string) |
+| `crustdata_web_fetch` | Fetch page content (GitHub commits) | `url` (page URL) |
+
+MCP server: `mcp.crustdata.com/mcp`
 
 ---
 
 ## Tool dependencies
 
-This skill requires:
-- **Crustdata MCP server** ([mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp)): provides `crustdata_people_search_db`, `crustdata_people_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
-- **Python** (with `openpyxl`): for spreadsheet I/O and parsing large API responses
-- **Web search** (Crustdata or general): for fallback email discovery
+This skill requires the **Crustdata MCP server** connected at [mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp). It provides:
+- `crustdata_company_identify`
+- `crustdata_people_enrich`
+- `crustdata_people_search_db`
+- `crustdata_web_search`
+- `crustdata_web_fetch`

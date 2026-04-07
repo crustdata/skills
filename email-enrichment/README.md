@@ -1,54 +1,92 @@
 # Email Enrichment
 
-Find verified business and personal emails for any list of people — powered by [Crustdata](https://crustdata.com)'s real-time people enrichment and web search APIs.
+Turn email addresses into rich contact profiles, or find verified emails for any list of people. Powered by [Crustdata](https://crustdata.com)'s 800M+ profile database and real-time enrichment APIs.
 
 ## What it does
 
-Give it a list of names (with optional LinkedIn URLs, companies, or titles) and it returns:
+**Email to person** - Give it a list of email addresses and get back: name, title, company, profile URL, and company details. Works across work emails, .edu emails, and personal emails (gmail, yahoo, etc.).
 
-- **Business emails** via Crustdata's 1B+ profile enrichment API
-- **Personal emails** via Crustdata's web search API and multi-source discovery
+**Person to email** - Give it a list of names (with companies or profile URLs) and get back: verified business emails, personal emails, and phone numbers.
 
-Works with spreadsheets (.xlsx/.csv) or plain text lists.
+## Quick start
+
+Connect the [Crustdata MCP server](https://mcp.crustdata.com/mcp), then ask:
+
+> "Here's a CSV of 500 emails from our calendar events. Can you tell me who these people are?"
+
+or:
+
+> "Find business emails for these 10 investors."
+
+## How email-to-person enrichment works
+
+The skill runs a 5-phase waterfall. Each phase catches what earlier phases missed:
+
+```
+Phase 1: Identify company from email domain        (free, ~85% of work domains)
+Phase 2: Direct person lookup by email              (~60% of work+edu emails)
+Phase 3: Search by name + company                   (+7% more matches)
+Phase 4: Search by email pattern + verification     (+11% more matches)
+Phase 5: Search by name for personal emails         (+1% more matches)
+```
+
+**Results on a mixed email list:**
+
+| Email type | Person match rate | Company match rate |
+|------------|------------------:|-------------------:|
+| Work emails | 95%+ | 95%+ |
+| .edu emails | 95%+ | 95%+ |
+| Personal emails | 95%+ | N/A |
+
+Every match in Phases 3-5 is verified: the name extracted from the email must appear in the returned profile, and for work/edu emails, the company or institution must appear in the person's employment or education history. This prevents false positives.
 
 ## Example
 
 **Input:**
-| Name | Company | Title |
-|------|---------|-------|
-| Pete Koomen | Y Combinator | General Partner |
-| Kaushik Iska | ClickHouse | Engineer |
-| Topher Conway | SV Angel | Managing Partner |
+```
+email
+kayla@openai.com
+dennis@rre.com
+rkoning@hbs.edu
+bert.zacharin@gmail.com
+```
 
 **Output:**
-| Name | Company | Business Email | Personal Email |
-|------|---------|---------------|----------------|
-| Pete Koomen | Y Combinator | pete@ycombinator.com | koomen@gmail.com |
-| Kaushik Iska | ClickHouse | kaushik@clickhouse.com | iska.kaushik@gmail.com |
-| Topher Conway | SV Angel | topher@svangel.com | — |
-
-## How it works
-
-1. **Resolves LinkedIn profiles** — uses Crustdata people search to match names + companies to LinkedIn URLs
-2. **Enriches business emails** — batches up to 25 profiles per API call via Crustdata's people enrichment API
-3. **Finds personal emails** — uses Crustdata's web search API with smart multi-source discovery to find personal contact information
-
-An AI-native alternative to Apollo, Hunter.io, Clearbit, ZoomInfo, People Data Labs, Coresignal, Lusha, RocketReach, Exa, and Parallel — runs entirely inside Claude with no GUI or per-seat pricing.
-
-See [SKILL.md](./SKILL.md) for the full technical methodology.
+| email | person | company | method |
+|-------|--------|---------|--------|
+| kayla@openai.com | Kayla Wood | OpenAI | person_enrich |
+| dennis@rre.com | Dennis Cherian | RRE Ventures | person_enrich |
+| rkoning@hbs.edu | Rem Koning | Harvard Business School | person_enrich |
+| bert.zacharin@gmail.com | - | - | unmatched |
 
 ## Setup
 
-**Claude.ai (web) or Claude Desktop (macOS/Windows):**
-1. Go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
-2. Download the [`.skill` file](https://github.com/crustdata/skills/releases) and upload it to your project
-3. Ask Claude to "find emails for these people" with your list
+### Claude.ai or Claude Desktop
 
-**Claude Code (CLI):**
-1. Add the [Crustdata MCP server](https://mcp.crustdata.com/mcp) to your Claude Code config
-2. Import this skill directory into your workspace
-3. Ask Claude to "find emails for these people" with your list
+1. Go to **Settings > Connectors > Add custom connector**
+2. Paste `https://mcp.crustdata.com/mcp` and click **Add** ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+3. Upload a CSV or paste your email list and ask Claude to enrich it
+
+### Claude Code (CLI)
+
+1. Add the Crustdata MCP server: `claude mcp add crustdata https://mcp.crustdata.com/mcp`
+2. Ask Claude to enrich your emails: `/email-enrichment my_emails.csv`
+
+## Crustdata MCP tools used
+
+| Tool | What it does | Cost |
+|------|-------------|------|
+| `crustdata_company_identify` | Resolves an email domain to a company | Free |
+| `crustdata_people_enrich` | Looks up a person by their work/edu email | Credits |
+| `crustdata_people_search_db` | Searches 800M+ profiles by name, company, or email patterns | Credits |
+| `crustdata_web_search` | Web search fallback for hard-to-find contacts | Credits |
+
+## Rate limits
+
+The skill respects Crustdata's leaky bucket rate limits (15-60 RPM depending on endpoint). For large lists, it saves progress to a JSON file so it can resume if interrupted.
 
 ## Evals
 
-Test cases are in [`evals/evals.json`](./evals/evals.json). Run them with the Claude Code skill-creator eval framework to benchmark performance.
+Test cases in [`evals/evals.json`](./evals/evals.json) cover both directions: email-to-person (5-phase waterfall with work, edu, and personal emails) and person-to-email (profile resolution and business email enrichment).
+
+See [SKILL.md](./SKILL.md) for the full technical methodology.

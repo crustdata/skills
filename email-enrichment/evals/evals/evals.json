@@ -3,12 +3,12 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Find business and personal emails for these 5 people:\n1) Topher Conway, Managing Partner at SV Angel — linkedin.com/in/topherc\n2) Pete Koomen, General Partner at Y Combinator — linkedin.com/in/petekoomen\n3) Kaushik Iska, Engineer at ClickHouse — linkedin.com/in/kaushikiska\n4) Eric Migicovsky, Partner at Y Combinator — linkedin.com/in/ericmigicovsky\n5) Honglei Liu, Founder at TofuHQ — linkedin.com/in/honglliu",
-      "expected_output": "A table or structured output listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from GitHub commit history or web search fallbacks). Technical people should have GitHub-sourced personal emails where possible. Source attribution for each email found.",
+      "prompt": "Find business and personal emails for these 5 people:\n1) Topher Conway, Managing Partner at SV Angel - linkedin.com/in/topherc\n2) Pete Koomen, General Partner at Y Combinator - linkedin.com/in/petekoomen\n3) Kaushik Iska, Engineer at ClickHouse - linkedin.com/in/kaushikiska\n4) Eric Migicovsky, Partner at Y Combinator - linkedin.com/in/ericmigicovsky\n5) Honglei Liu, Founder at TofuHQ - linkedin.com/in/honglliu",
+      "expected_output": "A table listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from GitHub commit history or web search fallbacks). Technical people should have GitHub-sourced personal emails where possible. Source attribution for each email found.",
       "files": [],
       "expectations": [
         "Calls crustdata_people_enrich with fields including business_email",
-        "Batches all LinkedIn URLs into a single crustdata_people_enrich call (not one per person)",
+        "Batches all profile URLs into a single crustdata_people_enrich call (not one per person)",
         "Searches for GitHub profiles for people identified as technical (Kaushik, Eric, Honglei)",
         "Verifies GitHub profile identity before extracting commit emails",
         "Does not search GitHub for non-technical people (Topher as VC)",
@@ -18,27 +18,72 @@
     {
       "id": 2,
       "prompt": "I met these people at a conference. Can you find their business emails?\n1) Ali Kashani, CEO of Serve Robotics\n2) Will Drevno, Head of Engineering at Lyft\n3) Michael Ma, Partner at Liquid 2 Ventures\n4) Priya Sharma, ML Engineer at Google DeepMind",
-      "expected_output": "Resolves LinkedIn profiles for all 4 people using Crustdata people search (since no LinkedIn URLs provided), then enriches with business emails. Reports which people were found and which could not be resolved.",
+      "expected_output": "Resolves profiles for all 4 people using Crustdata people search (since no profile URLs provided), then enriches with business emails. Reports which people were found and which could not be resolved.",
       "files": [],
       "expectations": [
-        "Uses crustdata_people_search_db to resolve LinkedIn profiles from names and companies",
+        "Uses crustdata_people_search_db to resolve profiles from names and companies",
         "Falls back to crustdata_web_search for people not found in the people database",
         "Includes company context in searches to disambiguate common names",
-        "Proceeds to business email enrichment after resolving LinkedIn URLs",
+        "Proceeds to business email enrichment after resolving profile URLs",
         "Reports which people could not be resolved and why"
       ]
     },
     {
       "id": 3,
       "prompt": "I need personal emails (gmail, etc.) for these engineers I want to recruit. Business emails won't work since I'm reaching out personally:\n1) Kaushik Iska, PeerDB/ClickHouse engineer\n2) Pete Koomen, previously at Optimizely\n3) Honglei Liu, Head of ML at Twitter / TofuHQ founder",
-      "expected_output": "Finds personal emails for all 3 technical people via GitHub commit history extraction. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search (Codeforces, personal sites) when GitHub doesn't yield results.",
+      "expected_output": "Finds personal emails for all 3 technical people via GitHub commit history extraction. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search when GitHub doesn't yield results.",
       "files": [],
       "expectations": [
         "Searches for GitHub profiles for all 3 people (all are technical)",
         "Finds oldest non-fork repositories for GitHub commit email extraction",
         "Validates extracted emails are not noreply/generated addresses",
-        "Falls back to web search (Codeforces, personal sites, etc.) when GitHub doesn't yield a personal email",
+        "Falls back to web search when GitHub doesn't yield a personal email",
         "Clearly indicates which emails are personal vs business in the output"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Here's a CSV of 20 email addresses from calendar events. Can you tell me who these people are?\n\nemail\nkayla@openai.com\nsunil@ubiquity.vc\nphil.vokins@intel.com\nniko@rerun.io\nkyle@backswingventures.com\ndulie.herr@fivetran.com\nlong@decilegroup.com\naprasad@accel.com\ntheo@bloccelerate.vc\npeyton@strutconsulting.com\nbert.zacharin@gmail.com\njoanne.bradford@gmail.com\neric.grigorian@gmail.com\nfreya.gothelf@gmail.com\nspockross@gmail.com\nrkoning@hbs.edu\nawu@hbs.edu\narmaana@stanford.edu\ncat@upandupcreative.co\nengineering@spotai.co",
+      "expected_output": "A CSV or table with each email classified (work/edu/personal), person name, company, profile URL, and which phase found the match. Work emails should have ~80% person match rate. Edu emails should have institution identified. Personal emails should attempt PersonDB email contains search with name verification.",
+      "files": [],
+      "expectations": [
+        "Classifies emails into work, edu, and personal categories",
+        "Runs Phase 1: crustdata_company_identify for unique work+edu domains",
+        "Runs Phase 2: crustdata_people_enrich with business_email for each work+edu email",
+        "Runs Phase 3: crustdata_people_search_db with name+company for missed work/edu emails",
+        "Runs Phase 4: crustdata_people_search_db with column='emails' for remaining unmatched",
+        "Verifies Phase 4 results: name match required, org match required for work/edu",
+        "Runs Phase 5: crustdata_people_search_db with name only for remaining personal emails",
+        "Outputs summary statistics by category and method",
+        "Handles engineering@spotai.co gracefully (generic prefix, no extractable name)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I have a list of investor emails and I need to identify who they are and what firm they're at:\n\nemail\ndennis@rre.com\nevan@coinfund.io\nas@lev.co\nvivek@pioneersquarelabs.com\nstephen@spero.vc",
+      "expected_output": "All 5 emails identified with person name, firm name, and profile URL. Company identify should resolve all domains. Person enrich should match most directly.",
+      "files": [],
+      "expectations": [
+        "Phase 1 identifies all 5 domains (rre.com, coinfund.io, lev.co, pioneersquarelabs.com, spero.vc)",
+        "Phase 2 enriches by business_email and finds at least 3 of 5",
+        "For any misses, Phase 3 tries name+company (e.g., 'vivek' at 'Pioneer Square Labs')",
+        "Company names are present for all 5 emails regardless of person match",
+        "Results include profile URLs for matched people"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Can you find who these personal email addresses belong to?\n\nemail\nankit.a.shah@gmail.com\neliza.girty@gmail.com\nromain.lacombe@gmail.com\njoanne.bradford@gmail.com\ndavidpervan@gmail.com",
+      "expected_output": "Attempts all phases for personal emails. Phase 4 (PersonDB emails contains) should find some matches with name verification. Phase 5 (name search) should catch additional matches with low ambiguity. Reports which could not be resolved.",
+      "files": [],
+      "expectations": [
+        "Skips Phases 1-3 for personal emails (no company to identify or search against)",
+        "Runs Phase 4: searches PersonDB emails field with local part (e.g., 'ankit.a.shah')",
+        "Verifies Phase 4 results using name parts only (no org verification for personal emails)",
+        "Runs Phase 5 for unmatched: searches by extracted name (e.g., 'Joanne Bradford')",
+        "Only accepts Phase 5 results with 3 or fewer matches (low ambiguity)",
+        "Honestly reports low coverage expectation for personal emails (~5-10%)",
+        "Does not fabricate results for unmatched emails"
       ]
     }
   ]
