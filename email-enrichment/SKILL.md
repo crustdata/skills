@@ -26,10 +26,11 @@ The approach uses five phases in a strict waterfall. Each phase catches emails t
 | Phase | MCP Tool | Targets | Cost |
 |-------|----------|---------|------|
 | 1 | `crustdata_company_identify` | Work + Edu emails | FREE |
-| 2 | `crustdata_people_enrich` | Work + Edu emails | Credits |
+| 2 | `crustdata_people_enrich` + post-verification | Work + Edu emails | Credits |
 | 3 | `crustdata_people_search_db` (name+company) | Missed work/edu | Credits |
 | 4 | `crustdata_people_search_db` (emails contains) | ALL remaining | Credits |
 | 5 | `crustdata_people_search_db` (name only) | Remaining personal | Credits |
+| 6 | `crustdata_web_search` + `crustdata_people_enrich` | ALL remaining | Credits |
 
 **Coverage rates:**
 
@@ -440,6 +441,67 @@ If 1-3 results returned, take the first one. If 0 or 4+, mark as unmatched.
 
 ---
 
+## Phase 6: Web search fallback for all remaining unmatched emails
+
+Final fallback for emails that all previous phases missed. Uses web search to find the person's profile URL, then enriches via that URL. This catches vanity domains (e.g., carolewainaina.com), personal brand domains, and any email not indexed in Crustdata's database.
+
+### When to use
+
+For any email that remains unmatched after Phases 1-5, regardless of category (work, edu, or personal).
+
+### Step 1: Web search for profile URL
+
+```
+crustdata_web_search:
+  query: "EMAIL linkedin"
+  sources: ["web"]
+```
+
+Check the results for any URL containing `linkedin.com/in/`. If found, proceed to Step 3.
+
+### Step 2: AI web search for name (if Step 1 didn't find a profile URL)
+
+```
+crustdata_web_search:
+  query: "who is EMAIL"
+  sources: ["ai"]
+```
+
+The AI response often says something like "belongs to Carole Wamuyu Wainaina" or "associated with John Smith at Company X". Extract the person's name and search PersonDB:
+
+```
+crustdata_people_search_db:
+  filters:
+    op: "and"
+    conditions:
+      - filter_type: "name"
+        type: "(.)"
+        value: "Extracted Name"
+  page_size: 3
+```
+
+If PersonDB returns a result with a profile URL, proceed to Step 3.
+
+### Step 3: Enrich via profile URL
+
+```
+crustdata_people_enrich:
+  linkedin_profile_url: "PROFILE_URL_FROM_STEP_1_OR_2"
+  fields: "name,business_email"
+```
+
+### Rate limit note
+
+Web search is rate-limited at 10 RPM (6 seconds between calls). This phase is slow by design. Only run it on emails that all other phases missed.
+
+### Expected results
+
+- Catches vanity/personal domains (carolewainaina.com, first-last.com)
+- Catches people not indexed by email but findable via web search
+- The AI mode is particularly effective at resolving "who owns this email" queries
+
+---
+
 ## Rate limiting
 
 Crustdata uses a leaky bucket algorithm. Requests must be distributed evenly -- bursting will trigger 429 errors even if you are under the per-minute limit.
@@ -565,9 +627,16 @@ For each email:
 |
 +-- Phase 5: Is it personal AND has 2+ name parts?
 |   +-- Yes -> crustdata_people_search_db(filters: name="FirstName LastName")
-|   |   +-- 1-3 results returned? -> DONE (method=name_search)
-|   |   +-- 0 or 4+ results? -> UNMATCHED
-|   +-- No -> UNMATCHED
+|   |   +-- 1-3 results returned + name verified? -> DONE (method=name_search)
+|   |   +-- 0 or 4+ results? -> Continue to Phase 6
+|   +-- No -> Continue to Phase 6
+|
++-- Phase 6: Still unmatched? (any email type)
+|   +-- crustdata_web_search(query="EMAIL linkedin", sources=["web"])
+|   |   +-- Found linkedin.com/in/ URL? -> crustdata_people_enrich(linkedin_profile_url=URL) -> DONE
+|   +-- No URL found? -> crustdata_web_search(query="who is EMAIL", sources=["ai"])
+|   |   +-- Extracted person name? -> crustdata_people_search_db(name) -> get profile URL -> enrich -> DONE
+|   +-- Nothing found? -> UNMATCHED
 ```
 
 ---
