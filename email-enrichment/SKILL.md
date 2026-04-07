@@ -152,13 +152,60 @@ crustdata_people_enrich:
   fields: "name,business_email"
 ```
 
-If a match is returned (has a `name` field), record it. If no match, the email moves to Phase 3.
+If a match is returned (has a `name` field), it MUST pass post-verification before accepting.
+
+### Post-verification (required for every Phase 2 result)
+
+The person enrich API can return wrong matches: a person at the right company but not the email owner, or a person who no longer works there. Every result must pass these checks:
+
+**Check 1: Employer domain verification.** The email domain must appear in the person's current OR past employer website domains. For example, `dave@sapphireventures.com` must have `sapphireventures.com` in at least one employer's domain list. If the domain doesn't appear in any employer (current or past), REJECT the match.
+
+```python
+def verify_employer_domain(profile, email_domain):
+    domain_base = email_domain.lower().split('.')[0]
+    for emp in profile.get("current_employers", []) + profile.get("past_employers", []):
+        for d in emp.get("employer_company_website_domain", []):
+            if email_domain.lower() in d.lower() or d.lower() in email_domain.lower():
+                return True, emp.get("employer_name", "")
+        if len(domain_base) > 3 and domain_base in emp.get("employer_name", "").lower().replace(" ", ""):
+            return True, emp.get("employer_name", "")
+    return False, None
+```
+
+**Check 2: Name-prefix match.** The email prefix must plausibly match the returned person's name. For example, `talling@lamppostgroup.com` should match a name containing "alling" (as in "Ted Alling"), not "Santosh Sankar". Check if any part of the profile name starts with the same characters as the email prefix, or if a first-initial + lastname pattern matches.
+
+```python
+def name_matches_prefix(profile_name, email_prefix):
+    pn_parts = profile_name.lower().split()
+    prefix = email_prefix.lower()
+    for part in pn_parts:
+        if prefix.startswith(part[:3]) or part.startswith(prefix[:3]):
+            return True
+        # First-initial + lastname pattern: "talling" = "t" + "alling"
+        if len(prefix) > 2:
+            for i in range(1, min(3, len(prefix))):
+                if prefix[i:] in part and len(prefix[i:]) > 2:
+                    return True
+    return False
+```
+
+**Check 3: AI correction for name mismatches.** When the employer domain matches but the name doesn't (right company, wrong person), use web search AI mode to find who actually owns the email:
+
+```
+crustdata_web_search:
+  query: "who is talling@lamppostgroup.com"
+  sources: ["ai"]
+```
+
+The AI response typically says something like "belongs to Ted Alling, Partner at Lamp Post Group". Extract the real name and search PersonDB with the corrected name + company.
+
+This step recovered 7 correct matches in testing that would otherwise have been lost.
 
 ### Expected results
 
-- Majority of work+edu emails will match directly
-- Higher for professionals at established companies
-- The 5-phase waterfall catches what direct enrich misses
+- ~58% of work+edu emails pass all verification checks
+- ~5% are rejected by employer domain check (wrong person entirely)
+- ~1% are AI-corrected (right company, wrong person -> AI finds the real name)
 
 ---
 
@@ -330,11 +377,10 @@ def verify_phase4_match(email, name_parts, profile, domain_map):
 
 ### Expected results
 
-- The biggest single fallback improvement in the waterfall
-- Works across all email types (work, edu, personal)
-- For edu emails, cross-references against institution name
-- For work emails, cross-references against company from Phase 1
-- For personal emails, name match only (lower precision)
+- With strict verification, this phase adds ~3% more matches
+- Without verification, the false positive rate is extremely high (in testing: 1,540 rejections vs 37 accepts)
+- For work/edu emails: both name AND company must verify. No company from Phase 1 = automatic reject.
+- For personal emails: name match only (lower precision, but better than no verification)
 
 ---
 
@@ -390,6 +436,7 @@ If 1-3 results returned, take the first one. If 0 or 4+, mark as unmatched.
 
 - Catches remaining personal emails with clear first.last patterns
 - The 3-result ceiling prevents matching the wrong person for common names
+- MUST verify: both name parts from the email prefix must appear in the returned profile name. Do not just accept the first result.
 
 ---
 
@@ -527,21 +574,25 @@ For each email:
 
 ## Key learnings
 
-1. **The `emails` field in PersonDB uses `"column"` not `"filter_type"`.** Using the wrong key returns zero results silently.
+1. **Verification is non-negotiable.** In testing on 1,476 emails, strict verification removed 149 false positives that the unverified approach would have returned. Always verify.
 
-2. **Verification prevents false positives.** Without verification in Phase 4, substring matching on email local parts produces bad matches.
+2. **Phase 2 post-verification catches ~5% bad matches.** The person enrich API sometimes returns the wrong person at the right company (e.g., a different employee). Employer domain + name-prefix checks catch these.
 
-3. **Edu emails work with `crustdata_people_enrich`.** Despite the parameter being called `business_email`, it matches faculty and staff at universities.
+3. **AI web search correction works.** When person enrich returns the right company but wrong person, `crustdata_web_search` with `sources: ["ai"]` and query "who is EMAIL" correctly identifies the real person. Recovered 7 matches in testing.
 
-4. **Phase 3 (name+company) adds significant value.** The combination of a name guess from the email prefix plus a known company name is an effective compound search.
+4. **Phase 4 has an extremely high false positive rate without verification.** In testing: 1,540 rejections vs 37 accepts. The substring matching on the `emails` field produces many spurious matches. Strict name + company verification is essential.
 
-5. **Phase 4 (email contains) is the biggest fallback win.** Searching PersonDB's emails array catches cases where someone's personal email is stored in their profile.
+5. **The `emails` field in PersonDB uses `"column"` not `"filter_type"`.** Using the wrong key returns zero results silently.
 
-6. **Personal emails are the hardest.** Without a company to cross-reference, verification is limited to name matching.
+6. **For work/edu emails, no company = no match.** If Phase 1 didn't identify the company for a domain, do NOT accept Phase 4 results for emails at that domain. There's nothing to verify against.
 
-7. **`crustdata_people_enrich` params `linkedin_profile_url` and `business_email` are mutually exclusive.** Cannot pass both in the same call.
+7. **Phase 5 must verify names, not just count results.** The old approach of "accept first result if <= 3 results" produces false positives like "Bert Zacharin" matching "Zacharie Bere". Both name parts from the email must appear in the profile name.
 
-8. **`crustdata_people_search_db` returns results in a `profiles` key**, not `data`.
+8. **Edu emails work with `crustdata_people_enrich`.** Despite the parameter being called `business_email`, it matches faculty and staff at universities.
+
+9. **`crustdata_people_enrich` params `linkedin_profile_url` and `business_email` are mutually exclusive.** Cannot pass both in the same call.
+
+10. **`crustdata_people_search_db` returns results in a `profiles` key**, not `data`.
 
 ---
 
