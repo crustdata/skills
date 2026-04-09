@@ -2,8 +2,9 @@
 name: email-enrichment
 description: >
   Enrich a list of email addresses to find the person behind each one (email to person profile).
-  Uses a 5-phase waterfall across Crustdata MCP tools: crustdata_company_identify,
-  crustdata_people_enrich, crustdata_people_search_db (three different filter strategies).
+  Uses a 7-phase waterfall across Crustdata MCP tools: crustdata_company_identify,
+  crustdata_people_enrich (business_email + personal_email), crustdata_people_search_db
+  (three different filter strategies), crustdata_web_search.
   Handles rate limiting, verification, progress saving, and resume.
   Trigger on: "enrich these emails", "who are these people", "find info for these email addresses",
   "look up these contacts", "identify people from emails", "reverse email lookup", "email to profile",
@@ -14,23 +15,24 @@ description: >
 
 Two directions, one skill:
 
-1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a 5-phase waterfall optimized for coverage and accuracy.
+1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a 7-phase waterfall optimized for coverage and accuracy.
 2. **Person to email** - Find business emails, personal emails, and phone numbers for a list of people. Uses enrichment with personal contact info, plus GitHub commit fallbacks for technical people.
 
 ---
 
 ## Overview
 
-The approach uses five phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
+The approach uses seven phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
 
 | Phase | MCP Tool | Targets | Cost |
 |-------|----------|---------|------|
 | 1 | `crustdata_company_identify` | Work + Edu emails | FREE |
-| 2 | `crustdata_people_enrich` + post-verification | Work + Edu emails | Credits |
+| 2 | `crustdata_people_enrich` (`business_email` or `personal_email`) + post-verification | ALL email types (work, edu, personal) | Credits |
 | 3 | `crustdata_people_search_db` (name+company) | Missed work/edu | Credits |
 | 4 | `crustdata_people_search_db` (emails contains) | ALL remaining | Credits |
 | 5 | `crustdata_people_search_db` (name only) | Remaining personal | Credits |
 | 6 | `crustdata_web_search` + `crustdata_people_enrich` | ALL remaining | Credits |
+| 7 | Scoring gate | ALL candidates from Phases 3-6 | N/A |
 
 **Coverage rates:**
 
@@ -124,11 +126,16 @@ Store the result in a domain_map: `domain -> company_name`. This will be used in
 
 ---
 
-## Phase 2: Person Enrich via business_email
+## Phase 2: Person Enrich via business_email or personal_email
 
-Look up each work and edu email directly using person enrichment.
+Look up each email directly using person enrichment. Phase 2 branches based on email type:
 
-### MCP tool call
+- **Work/edu emails** -> use `business_email` parameter + post-verification
+- **Personal emails** -> use `personal_email` parameter, no post-verification needed
+
+### Branch A: Work/edu emails (business_email)
+
+#### MCP tool call
 
 ```
 crustdata_people_enrich:
@@ -136,14 +143,14 @@ crustdata_people_enrich:
   fields: "name,business_email"
 ```
 
-### Critical details
+#### Critical details
 
 - `business_email` takes a **single email string**
 - `linkedin_profile_url` and `business_email` are **mutually exclusive** -- you cannot use both in the same call
 - Despite the name "business_email", this works for edu emails too (especially faculty/staff)
 - Returns person data including: name, headline, profile URL, current and past employers
 
-### How to run it
+#### How to run it
 
 For each work + edu email:
 
@@ -153,9 +160,43 @@ crustdata_people_enrich:
   fields: "name,business_email"
 ```
 
-If a match is returned (has a `name` field), it MUST pass post-verification before accepting.
+If a match is returned (has a `name` field), it MUST pass post-verification before accepting (see Post-verification section below).
 
-### Post-verification (required for every Phase 2 result)
+### Branch B: Personal emails (personal_email)
+
+#### MCP tool call
+
+```
+crustdata_people_enrich:
+  personal_email: "bert.zacharin@gmail.com"
+  enrich_realtime: true
+```
+
+#### Critical details
+
+- `personal_email` accepts **personal email domains only** (gmail, yahoo, outlook, etc.). Business/work emails will be rejected by the API.
+- `personal_email` is **mutually exclusive** with `linkedin_profile_url`, `business_email`, and `github_profile_url` -- you cannot combine it with any other identifier in the same call.
+- **Cost:** 3 credits per lookup, 5 credits with `enrich_realtime: true`
+- **No post-verification needed.** The API performs its own matching for personal emails. If it returns a result, accept it directly.
+- **Access-controlled feature.** This parameter needs to be enabled on the account. If the call fails or returns empty, fall through to Phases 4/5/6.
+
+#### How to run it
+
+For each personal email:
+
+```
+crustdata_people_enrich:
+  personal_email: "joanne.bradford@gmail.com"
+  enrich_realtime: true
+```
+
+If a match is returned (has a `name` field), accept it directly -- no post-verification required.
+
+If no match is returned, the email falls through to Phase 4/5/6 as fallbacks.
+
+**Note:** The `personal_email` parameter (released April 2026) is now the primary approach for personal emails. Phases 4 and 5 serve as fallbacks for what Phase 2 misses.
+
+### Post-verification (required for every Phase 2 Branch A result -- work/edu only)
 
 The person enrich API can return wrong matches: a person at the right company but not the email owner, or a person who no longer works there. Every result must pass these checks:
 
@@ -204,9 +245,8 @@ This step recovered 7 correct matches in testing that would otherwise have been 
 
 ### Expected results
 
-- ~58% of work+edu emails pass all verification checks
-- ~5% are rejected by employer domain check (wrong person entirely)
-- ~1% are AI-corrected (right company, wrong person -> AI finds the real name)
+- **Work/edu (Branch A):** ~58% of work+edu emails pass all verification checks. ~5% are rejected by employer domain check (wrong person entirely). ~1% are AI-corrected (right company, wrong person -> AI finds the real name).
+- **Personal (Branch B):** ~90% of personal emails resolve directly via `personal_email` parameter. No post-verification needed.
 
 ---
 
@@ -502,6 +542,23 @@ Web search is rate-limited at 10 RPM (6 seconds between calls). This phase is sl
 
 ---
 
+## Phase 7: Scoring gate (applied to all candidates from Phases 3-6)
+
+All candidate matches produced by Phases 3, 4, 5, and 6 must pass through this scoring gate before being accepted. Phase 2 results are exempt (Phase 2 Branch A has its own post-verification; Phase 2 Branch B results from `personal_email` are pre-verified by the API).
+
+### Hard requirements (both must pass)
+
+1. **name_sim > 0.8** -- The similarity between the name extracted from the email prefix and the candidate profile name must exceed 0.8. This prevents a perfect company match from compensating for a bad name match.
+2. **combined_score > 0.7** -- The overall combined score (incorporating name similarity, company match, and any other signals) must exceed 0.7.
+
+Phase 7 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`. This prevents a perfect company match from compensating for a bad name match. For example, finding someone at the right company whose name does not resemble the email prefix will be rejected even if the company match is perfect.
+
+### When a candidate fails
+
+If a candidate fails the scoring gate, it is rejected and the email continues to the next phase in the waterfall. If no phase produces a candidate that passes the gate, the email is marked UNMATCHED.
+
+---
+
 ## Rate limiting
 
 Crustdata uses a leaky bucket algorithm. Requests must be distributed evenly -- bursting will trigger 429 errors even if you are under the per-minute limit.
@@ -602,17 +659,25 @@ For each email:
 |   +-- Yes -> Extract domain -> crustdata_company_identify(company_website=domain)
 |   |   +-- Found company? -> Store in domain_map
 |   |   +-- Not found? -> Continue (no company info for this domain)
-|   +-- No (personal) -> Skip to Phase 4
+|   +-- No (personal) -> Skip to Phase 2 Branch B
 |
-+-- Phase 2: Is it work or edu?
-|   +-- Yes -> crustdata_people_enrich(business_email=email, fields="name,business_email")
-|   |   +-- Found person? -> DONE (method=person_enrich)
++-- Phase 2: Branch by email type
+|   |
+|   +-- Work/edu (Branch A):
+|   |   +-- crustdata_people_enrich(business_email=email, fields="name,business_email")
+|   |   +-- Found person? -> Post-verify (employer domain + name prefix + AI correction)
+|   |   |   +-- Verified? -> DONE (method=person_enrich)
+|   |   |   +-- Failed verification? -> Continue to Phase 3
 |   |   +-- Not found? -> Continue to Phase 3
-|   +-- No (personal) -> Skip to Phase 4
+|   |
+|   +-- Personal (Branch B):
+|       +-- crustdata_people_enrich(personal_email=email, enrich_realtime=true)
+|       +-- Found person? -> DONE (method=person_enrich_personal) -- no post-verification needed
+|       +-- Not found? -> Continue to Phase 4 (skip Phase 3)
 |
 +-- Phase 3: Is it work/edu AND have company name AND name parts?
 |   +-- Yes -> crustdata_people_search_db(filters: name + current_employers.name)
-|   |   +-- Found + name verified? -> DONE (method=name+company)
+|   |   +-- Found + name verified? -> Phase 7 scoring gate -> DONE (method=name+company)
 |   |   +-- Not found? -> Continue to Phase 4
 |   +-- No -> Skip to Phase 4
 |
@@ -622,21 +687,26 @@ For each email:
 |   |   +-- Name parts match profile name? (required)
 |   |   +-- Work/edu: org appears in profile history? (required)
 |   |   +-- Personal: name match only (no org check possible)
-|   +-- Verified match? -> DONE (method=email_contains)
+|   +-- Verified match? -> Phase 7 scoring gate -> DONE (method=email_contains)
 |   +-- No verified match? -> Continue to Phase 5
 |
 +-- Phase 5: Is it personal AND has 2+ name parts?
 |   +-- Yes -> crustdata_people_search_db(filters: name="FirstName LastName")
-|   |   +-- 1-3 results returned + name verified? -> DONE (method=name_search)
+|   |   +-- 1-3 results returned + name verified? -> Phase 7 scoring gate -> DONE (method=name_search)
 |   |   +-- 0 or 4+ results? -> Continue to Phase 6
 |   +-- No -> Continue to Phase 6
 |
 +-- Phase 6: Still unmatched? (any email type)
 |   +-- crustdata_web_search(query="EMAIL linkedin", sources=["web"])
-|   |   +-- Found linkedin.com/in/ URL? -> crustdata_people_enrich(linkedin_profile_url=URL) -> DONE
+|   |   +-- Found linkedin.com/in/ URL? -> crustdata_people_enrich(linkedin_profile_url=URL) -> Phase 7 scoring gate -> DONE
 |   +-- No URL found? -> crustdata_web_search(query="who is EMAIL", sources=["ai"])
-|   |   +-- Extracted person name? -> crustdata_people_search_db(name) -> get profile URL -> enrich -> DONE
+|   |   +-- Extracted person name? -> crustdata_people_search_db(name) -> get profile URL -> enrich -> Phase 7 scoring gate -> DONE
 |   +-- Nothing found? -> UNMATCHED
+|
++-- Phase 7: Scoring gate (applied to all candidates from Phases 3-6)
+    +-- Requires BOTH: name_sim > 0.8 AND combined_score > 0.7
+    +-- Pass? -> Accept match
+    +-- Fail? -> Reject, continue to next phase or mark UNMATCHED
 ```
 
 ---
@@ -662,6 +732,10 @@ For each email:
 9. **`crustdata_people_enrich` params `linkedin_profile_url` and `business_email` are mutually exclusive.** Cannot pass both in the same call.
 
 10. **`crustdata_people_search_db` returns results in a `profiles` key**, not `data`.
+
+11. **The `personal_email` parameter (released April 2026) dramatically improves personal email coverage from ~5-10% to ~90%.** Before this parameter, personal emails relied on Phase 4/5 substring searches with low precision. Now Phase 2 Branch B handles most personal emails directly.
+
+12. **Phase 7 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`.** This prevents a perfect company match from compensating for a bad name match. Without the `name_sim` hard gate, false positives like "Bert Zacharin" matching "Zacharie Bere" can slip through.
 
 ---
 
@@ -823,7 +897,7 @@ Extract the email from the `From:` header in the patch. Discard `noreply@github.
 | Tool | Purpose | Key parameters |
 |------|---------|---------------|
 | `crustdata_company_identify` | Domain to company (FREE) | `company_website` (domain string) |
-| `crustdata_people_enrich` | Email to person, or person to emails | `business_email` OR `linkedin_profile_url`, `fields` |
+| `crustdata_people_enrich` | Email to person, or person to emails | `business_email` OR `personal_email` OR `linkedin_profile_url` (mutually exclusive), `fields`, `enrich_realtime` |
 | `crustdata_people_search_db` | Search people by filters | `filters` (object with `op`, `conditions`), `page_size` |
 | `crustdata_web_search` | Web search (find profiles, fallback) | `query` (search string) |
 | `crustdata_web_fetch` | Fetch page content (GitHub commits) | `url` (page URL) |

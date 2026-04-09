@@ -4,7 +4,7 @@ Turn email addresses into rich contact profiles, or find verified emails for any
 
 ## What it does
 
-**Email to person** - Give it a list of email addresses and get back: name, title, company, profile URL, and company details. Works across work emails, .edu emails, and personal emails (gmail, yahoo, etc.).
+**Email to person** - Give it a list of email addresses and get back: name, title, company, profile URL, and company details. Works across work emails, .edu emails, and personal emails (gmail, yahoo, outlook).
 
 **Person to email** - Give it a list of names (with companies or profile URLs) and get back: verified business emails, personal emails, and phone numbers.
 
@@ -20,25 +20,21 @@ or:
 
 ## How email-to-person enrichment works
 
-The skill runs a 5-phase waterfall. Each phase catches what earlier phases missed:
+The skill runs a 7-phase waterfall. Each phase catches what earlier phases missed:
 
 ```
-Phase 1: Identify company from email domain        (free, ~85% of work domains)
-Phase 2: Direct person lookup by email              (~60% of work+edu emails)
-Phase 3: Search by name + company                   (+7% more matches)
-Phase 4: Search by email pattern + verification     (+11% more matches)
-Phase 5: Search by name for personal emails         (+1% more matches)
+Phase 1: Identify company from email domain              (free)
+Phase 2: Direct person lookup by email                    (work, edu, and personal)
+Phase 3: Search by name + company                         (work/edu fallback)
+Phase 4: Search by email pattern + domain verification    (all types fallback)
+Phase 5: Search by name for personal emails               (personal fallback)
+Phase 6: Web search to find profile URL                   (all types fallback)
+Phase 7: Multi-signal scoring gate                        (quality filter)
 ```
 
-**Results on a mixed email list:**
+Phase 2 handles all email types in a single step: work and edu emails use the `business_email` parameter, while personal emails (gmail, yahoo, outlook) use the `personal_email` parameter for direct reverse lookup.
 
-| Email type | Person match rate | Company match rate |
-|------------|------------------:|-------------------:|
-| Work emails | 95%+ | 95%+ |
-| .edu emails | 95%+ | 95%+ |
-| Personal emails | 95%+ | N/A |
-
-Every match in Phases 3-5 is verified: the name extracted from the email must appear in the returned profile, and for work/edu emails, the company or institution must appear in the person's employment or education history. This prevents false positives.
+Every match is verified. Work and edu email results are checked against employer domains. Phases 3-6 results pass through a scoring gate that requires strong name and company alignment before accepting.
 
 ## Example
 
@@ -57,7 +53,7 @@ bert.zacharin@gmail.com
 | kayla@openai.com | Kayla Wood | OpenAI | person_enrich |
 | dennis@rre.com | Dennis Cherian | RRE Ventures | person_enrich |
 | rkoning@hbs.edu | Rem Koning | Harvard Business School | person_enrich |
-| bert.zacharin@gmail.com | - | - | unmatched |
+| bert.zacharin@gmail.com | Albert Zacharin | Coinbase | personal_email |
 
 ## Setup
 
@@ -69,7 +65,7 @@ bert.zacharin@gmail.com
 
 ### Claude Code (CLI)
 
-1. Add the Crustdata MCP server: `claude mcp add crustdata https://mcp.crustdata.com/mcp`
+1. Add the Crustdata MCP server: `claude mcp add --transport http crustdata https://mcp.crustdata.com/mcp`
 2. Ask Claude to enrich your emails: `/email-enrichment my_emails.csv`
 
 ## Crustdata MCP tools used
@@ -77,16 +73,16 @@ bert.zacharin@gmail.com
 | Tool | What it does | Cost |
 |------|-------------|------|
 | `crustdata_company_identify` | Resolves an email domain to a company | Free |
-| `crustdata_people_enrich` | Looks up a person by their work/edu email | Credits |
+| `crustdata_people_enrich` | Looks up a person by work email, personal email, or profile URL | Credits |
 | `crustdata_people_search_db` | Searches 800M+ profiles by name, company, or email patterns | Credits |
 | `crustdata_web_search` | Web search fallback for hard-to-find contacts | Credits |
 
 ## Rate limits
 
-The skill respects Crustdata's leaky bucket rate limits (15-60 RPM depending on endpoint). For large lists, it saves progress to a JSON file so it can resume if interrupted.
+The skill respects Crustdata's rate limits (leaky bucket, 15-100 RPM depending on endpoint and plan). For large lists, it saves progress to a JSON file so it can resume if interrupted.
 
 ## Evals
 
-Test cases in [`evals/evals.json`](./evals/evals.json) cover both directions: email-to-person (5-phase waterfall with work, edu, and personal emails) and person-to-email (profile resolution and business email enrichment).
+Test cases in [`evals/evals.json`](./evals/evals.json) cover both directions: email-to-person (7-phase waterfall with work, edu, and personal emails) and person-to-email (profile resolution and business email enrichment).
 
 See [SKILL.md](./SKILL.md) for the full technical methodology.

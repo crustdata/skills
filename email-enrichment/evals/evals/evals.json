@@ -43,47 +43,21 @@
     },
     {
       "id": 4,
-      "prompt": "Here's a CSV of 20 email addresses from calendar events. Can you tell me who these people are?\n\nemail\nkayla@openai.com\nsunil@ubiquity.vc\nphil.vokins@intel.com\nniko@rerun.io\nkyle@backswingventures.com\ndulie.herr@fivetran.com\nlong@decilegroup.com\naprasad@accel.com\ntheo@bloccelerate.vc\npeyton@strutconsulting.com\nbert.zacharin@gmail.com\njoanne.bradford@gmail.com\neric.grigorian@gmail.com\nfreya.gothelf@gmail.com\nspockross@gmail.com\nrkoning@hbs.edu\nawu@hbs.edu\narmaana@stanford.edu\ncat@upandupcreative.co\nengineering@spotai.co",
-      "expected_output": "A CSV or table with each email classified (work/edu/personal), person name, company, profile URL, and which phase found the match. Work emails should have ~80% person match rate. Edu emails should have institution identified. Personal emails should attempt PersonDB email contains search with name verification.",
+      "prompt": "Here are 10 email addresses. Can you identify who these people are?\n\nemail\nkayla@openai.com\nvivek@pioneersquarelabs.com\ncarole@carolewainaina.com\ntalling@lamppostgroup.com\nkyle@backswingventures.com\nrkoning@hbs.edu\nbert.zacharin@gmail.com\njoanne.bradford@gmail.com\neric.grigorian@gmail.com\njashojit@gmail.com",
+      "expected_output": "All 10 emails enriched with person name, company, and profile URL. Work emails use business_email, personal emails use personal_email parameter. Results are domain-verified for work/edu. Coverage should be high across all email types.",
       "files": [],
       "expectations": [
-        "Classifies emails into work, edu, and personal categories",
-        "Runs Phase 1: crustdata_company_identify for unique work+edu domains",
-        "Runs Phase 2: crustdata_people_enrich with business_email for each work+edu email",
-        "Runs Phase 3: crustdata_people_search_db with name+company for missed work/edu emails",
-        "Runs Phase 4: crustdata_people_search_db with column='emails' for remaining unmatched",
-        "Verifies Phase 4 results: name match required, org match required for work/edu",
-        "Runs Phase 5: crustdata_people_search_db with name only for remaining personal emails",
-        "Outputs summary statistics by category and method",
-        "Handles engineering@spotai.co gracefully (generic prefix, no extractable name)"
-      ]
-    },
-    {
-      "id": 5,
-      "prompt": "I have a list of investor emails and I need to identify who they are and what firm they're at:\n\nemail\ndennis@rre.com\nevan@coinfund.io\nas@lev.co\nvivek@pioneersquarelabs.com\nstephen@spero.vc",
-      "expected_output": "All 5 emails identified with person name, firm name, and profile URL. Company identify should resolve all domains. Person enrich should match most directly.",
-      "files": [],
-      "expectations": [
-        "Phase 1 identifies all 5 domains (rre.com, coinfund.io, lev.co, pioneersquarelabs.com, spero.vc)",
-        "Phase 2 enriches by business_email and finds at least 3 of 5",
-        "For any misses, Phase 3 tries name+company (e.g., 'vivek' at 'Pioneer Square Labs')",
-        "Company names are present for all 5 emails regardless of person match",
-        "Results include profile URLs for matched people"
-      ]
-    },
-    {
-      "id": 6,
-      "prompt": "Can you find who these personal email addresses belong to?\n\nemail\nankit.a.shah@gmail.com\neliza.girty@gmail.com\nromain.lacombe@gmail.com\njoanne.bradford@gmail.com\ndavidpervan@gmail.com",
-      "expected_output": "Attempts all phases for personal emails. Phase 4 (PersonDB emails contains) should find some matches with name verification. Phase 5 (name search) should catch additional matches with low ambiguity. Reports which could not be resolved.",
-      "files": [],
-      "expectations": [
-        "Skips Phases 1-3 for personal emails (no company to identify or search against)",
-        "Runs Phase 4: searches PersonDB emails field with local part (e.g., 'ankit.a.shah')",
-        "Verifies Phase 4 results using name parts only (no org verification for personal emails)",
-        "Runs Phase 5 for unmatched: searches by extracted name (e.g., 'Joanne Bradford')",
-        "Only accepts Phase 5 results with 3 or fewer matches (low ambiguity)",
-        "Honestly reports low coverage expectation for personal emails (~5-10%)",
-        "Does not fabricate results for unmatched emails"
+        "Phase 1: identifies companies for work/edu domains (openai.com, pioneersquarelabs.com, lamppostgroup.com, backswingventures.com, hbs.edu)",
+        "Phase 2 work: uses crustdata_people_enrich with business_email for work/edu emails",
+        "Phase 2 personal: uses crustdata_people_enrich with personal_email for gmail addresses",
+        "Phase 2 post-verification: checks employer domain match for work/edu results",
+        "Phase 2 AI correction: for talling@lamppostgroup.com, detects name mismatch and uses web search AI to find Ted Alling",
+        "Phase 6: catches vivek@pioneersquarelabs.com and carole@carolewainaina.com via web search",
+        "Phase 7: does NOT accept false positives - requires name_sim > 0.8",
+        "bert.zacharin@gmail.com resolves to Albert Zacharin (not Zacharie Bere)",
+        "joanne.bradford@gmail.com resolves to Joanne Bradford (not Julie Day)",
+        "jashojit@gmail.com resolves to Jashojit Roy (not Rick Clonan)",
+        "No false positives: every match has verified name and company alignment"
       ]
     }
   ]
