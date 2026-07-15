@@ -1,0 +1,12 @@
+{
+  "name": "crustdata",
+  "description": "Crustdata plugins for agent clients.",
+  "plugins": [
+    {
+      "name": "crustdata",
+      "source": "git-subdir",
+      "path": "codex",
+      "description": "Crustdata for Codex — MCP data tools + research skills + gated per-account skills."
+    }
+  ]
+}

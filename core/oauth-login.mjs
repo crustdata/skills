@@ -34,7 +34,9 @@ import process from "node:process";
 import { credentialsPath, writeStore } from "./credential-store.mjs";
 
 const DEFAULT_BASE_URL = "https://install.crustdata.com";
-const CLIENT_NAME = "Crustdata Claude Code plugin";
+// DCR display label (shown on the consent screen); each client's launcher can
+// override it (Codex sets "Crustdata Codex plugin"). Cosmetic — not identity.
+const CLIENT_NAME = (process.env.CRUSTDATA_CLIENT_NAME ?? "").trim() || "Crustdata Claude Code plugin";
 const CALLBACK_PATH = "/callback";
 /** How long we wait for the user to finish signing in in the browser. */
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;

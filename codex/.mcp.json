@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "crustdata": {
+      "url": "https://install.crustdata.com/mcp",
+      "auth": "oauth"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/skills-sync.mjs\"",
+            "statusMessage": "Syncing Crustdata gated skills"
+          }
+        ]
+      }
+    ]
+  }
+}
