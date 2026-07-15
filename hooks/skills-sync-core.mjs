@@ -15,7 +15,6 @@
  *   GET  /skills/:slug/content      → 302 to a presigned zip download (or the
  *                                      raw zip on the FS store); the hook
  *                                      downloads and unzips it itself
- *   POST /skills/install-reports    → best-effort per-skill outcome telemetry
  */
 
 import { randomBytes } from "node:crypto";
@@ -631,21 +630,6 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       results.push({ slug, version, state });
     } catch (err) {
       results.push({ slug, version, state: "failed", error: err instanceof Error ? err.message : String(err) });
-    }
-  }
-
-  // Best-effort telemetry: one report per outcome. A failed report must never
-  // undo (or even be visible next to) a good install — swallow everything.
-  for (const r of results) {
-    if (r.state === "up_to_date") continue; // no action taken → nothing to report
-    try {
-      await fetchJson(fetchImpl, `${base}/skills/install-reports`, apiKey, timeoutMs, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ skill_slug: r.slug, version: r.version, state: r.state, ...(r.error !== undefined ? { error: r.error } : {}) }),
-      });
-    } catch {
-      /* best-effort */
     }
   }
 
