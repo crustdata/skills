@@ -7,10 +7,15 @@
  * `skills-sync-core.mjs`; this shell only reads the environment, runs one sync
  * pass, and emits the SessionStart JSON signal.
  *
+ * Auth: the bearer normally comes from the shared credential store written by
+ * `bin/crustdata-login.mjs` (silently refreshed when expired) — the same store
+ * the MCP headersHelper reads. Neither store nor env key → graceful no-op:
+ * gated sync is skipped, bundled skills keep working.
+ *
  * Environment (documented in docs/skills-registry-contract.md §4):
- *   CRUSTDATA_API_KEY         — the caller's API key (same env the plugin's
- *                               .mcp.json references). Absent → graceful no-op:
- *                               gated sync is skipped, bundled skills keep working.
+ *   CRUSTDATA_API_KEY         — optional override: when set it wins over the
+ *                               credential store (keeps the local e2e harness
+ *                               and pre-OAuth setups working).
  *   CRUSTDATA_SKILLS_BASE_URL — backend origin override (default
  *                               https://skills.crustdata.com); used by the
  *                               local e2e harness to point at a local backend.
@@ -25,6 +30,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { getAccessToken } from "./lib/credential-store.mjs";
 import { hookOutput, runSync } from "./skills-sync-core.mjs";
 
 const DEFAULT_BASE_URL = "https://skills.crustdata.com";
@@ -35,7 +41,7 @@ function logLine(message) {
 
 export async function main() {
   const pluginRoot = (process.env.CLAUDE_PLUGIN_ROOT ?? "").trim();
-  const apiKey = (process.env.CRUSTDATA_API_KEY ?? "").trim() || undefined;
+  const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
   const baseUrl = (process.env.CRUSTDATA_SKILLS_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
 
   if (pluginRoot === "") {
@@ -45,6 +51,13 @@ export async function main() {
   if (typeof globalThis.fetch !== "function") {
     logLine("global fetch unavailable (Node < 18?) — skipping gated skill sync");
     return;
+  }
+  // Env var (when set) wins over the OAuth credential store; the store token is
+  // silently refreshed by getAccessToken when expired. Both absent → undefined,
+  // and runSync no-ops exactly like the historical no-key path.
+  const apiKey = envKey !== "" ? envKey : ((await getAccessToken()) ?? undefined);
+  if (apiKey === undefined) {
+    logLine(`not signed in — to enable gated skills, run: node "${pluginRoot}/bin/crustdata-login.mjs"`);
   }
   const { changed } = await runSync({
     apiKey,
