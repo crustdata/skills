@@ -1,5 +1,5 @@
 /**
- * Type surface of skills-sync-core.mjs for the repo's TypeScript tests.
+ * Type surface of skill-sync.mjs for the repo's TypeScript tests.
  *
  * The hook itself is plain JavaScript (it must run on client machines with no
  * build step), but the vitest suite is TypeScript under NodeNext — this
@@ -123,5 +123,4 @@ export declare function installSkillAtomically(args: {
 }): void;
 export declare function removeSkillDir(skillsRoot: string, slug: string): boolean;
 export declare function cleanupStaleDirs(skillsRoot: string): void;
-export declare function hookOutput(changed: boolean): string | null;
 export declare function runSync(options: RunSyncOptions): Promise<{ changed: boolean; results: SyncResult[] }>;

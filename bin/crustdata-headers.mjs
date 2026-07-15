@@ -19,7 +19,7 @@
 
 import process from "node:process";
 
-import { getAccessToken } from "../hooks/lib/credential-store.mjs";
+import { getAccessToken } from "../core/credential-store.mjs";
 
 const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
 const token = envKey !== "" ? envKey : await getAccessToken();

@@ -19,7 +19,7 @@ import {
   removeSkillDir,
   runSync,
   writeSkillTree,
-} from "../hooks/skills-sync-core.mjs";
+} from "../core/skill-sync.mjs";
 
 // ── a minimal zip builder (store or deflate), enough to craft hostile inputs ──
 

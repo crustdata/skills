@@ -516,17 +516,6 @@ export function cleanupStaleDirs(skillsRoot) {
   }
 }
 
-// ── hook output ──────────────────────────────────────────────────────────────
-
-/**
- * SessionStart output: emitted iff the local set changed (contract §4).
- * `reloadSkills` makes Claude re-scan the plugin skills dir in-session.
- */
-export function hookOutput(changed) {
-  if (!changed) return null;
-  return JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: true } });
-}
-
 // ── orchestrator ─────────────────────────────────────────────────────────────
 
 async function fetchJson(fetchImpl, url, apiKey, timeoutMs, init = {}) {

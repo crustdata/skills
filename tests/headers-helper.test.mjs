@@ -6,7 +6,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { writeStore } from "../hooks/lib/credential-store.mjs";
+import { writeStore } from "../core/credential-store.mjs";
 
 const HELPER = fileURLToPath(new URL("../bin/crustdata-headers.mjs", import.meta.url));
 

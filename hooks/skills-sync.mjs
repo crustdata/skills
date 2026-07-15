@@ -4,7 +4,7 @@
  *
  * Runs on the CLIENT with zero dependencies (Node built-ins + global fetch),
  * no install step, no interactive stdin. All real logic lives in
- * `skills-sync-core.mjs`; this shell only reads the environment, runs one sync
+ * `../core/skill-sync.mjs`; this shell only reads the environment, runs one sync
  * pass, and emits the SessionStart JSON signal.
  *
  * Auth: the bearer normally comes from the shared credential store written by
@@ -30,13 +30,23 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { getAccessToken } from "./lib/credential-store.mjs";
-import { hookOutput, runSync } from "./skills-sync-core.mjs";
+import { getAccessToken } from "../core/credential-store.mjs";
+import { runSync } from "../core/skill-sync.mjs";
 
 const DEFAULT_BASE_URL = "https://skills.crustdata.com";
 
 function logLine(message) {
   process.stderr.write(`[crustdata-skills] ${message}\n`);
+}
+
+/**
+ * SessionStart output: emitted iff the local set changed (contract §4).
+ * `reloadSkills` makes Claude re-scan the plugin skills dir in-session. This is the
+ * Claude-specific signal; other clients (Codex) format their own from `changed`.
+ */
+function hookOutput(changed) {
+  if (!changed) return null;
+  return JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: true } });
 }
 
 export async function main() {

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { credentialsPath, getAccessToken, readStore, writeStore } from "../hooks/lib/credential-store.mjs";
+import { credentialsPath, getAccessToken, readStore, writeStore } from "../core/credential-store.mjs";
 
 /** Fresh isolated store dir per test; returns { env, dir, cleanup }. */
 function tempStore() {
