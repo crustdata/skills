@@ -1,0 +1,12 @@
+{
+  "name": "crustdata",
+  "displayName": "Crustdata",
+  "version": "0.1.0",
+  "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, bundled research skills, and per-account gated skills synced at session start.",
+  "author": {
+    "name": "Crustdata",
+    "email": "support@crustdata.co",
+    "url": "https://crustdata.com"
+  },
+  "homepage": "https://docs.crustdata.com"
+}
