@@ -70,12 +70,47 @@ const AS_META = {
   registration_endpoint: "https://as.example/register",
 };
 
-test("discover: direct oauth-authorization-server metadata wins", async () => {
+test("discover: direct oauth-authorization-server metadata wins (issuer self-consistent)", async () => {
   const { impl, calls } = scriptedFetch({
+    "https://as.example/.well-known/oauth-authorization-server": AS_META,
+  });
+  assert.deepEqual(await discover("https://as.example/", impl), AS_META);
+  assert.equal(calls.length, 1);
+});
+
+test("discover: rejects an http (plaintext) base — no discovery over insecure transport", async () => {
+  const { impl, calls } = scriptedFetch({
+    "http://as.example/.well-known/oauth-authorization-server": AS_META,
+  });
+  assert.equal(await discover("http://as.example", impl), null);
+  assert.equal(calls.length, 0); // never even fetched
+});
+
+test("discover: rejects metadata whose issuer origin != where it was served (spoofed issuer)", async () => {
+  const { impl } = scriptedFetch({
+    // served at mcp.example, but AS_META claims issuer as.example → not self-consistent
     "https://mcp.example/.well-known/oauth-authorization-server": AS_META,
   });
-  assert.deepEqual(await discover("https://mcp.example/", impl), AS_META);
-  assert.equal(calls.length, 1);
+  assert.equal(await discover("https://mcp.example", impl), null);
+});
+
+test("discover: rejects a metadata doc that points its token_endpoint at another origin", async () => {
+  const poisoned = { ...AS_META, token_endpoint: "https://evil.example/token" };
+  const { impl } = scriptedFetch({
+    "https://as.example/.well-known/oauth-authorization-server": poisoned,
+  });
+  assert.equal(await discover("https://as.example", impl), null);
+});
+
+test("discover: ignores a cross-origin AS advertised over http, keeps the https one", async () => {
+  const { impl } = scriptedFetch({
+    "https://mcp.example/.well-known/oauth-protected-resource": {
+      resource: "https://mcp.example/mcp",
+      authorization_servers: ["http://evil.example", "https://as.example"],
+    },
+    "https://as.example/.well-known/oauth-authorization-server": AS_META,
+  });
+  assert.deepEqual(await discover("https://mcp.example", impl), AS_META);
 });
 
 test("discover: falls back to protected-resource metadata → its authorization server", async () => {

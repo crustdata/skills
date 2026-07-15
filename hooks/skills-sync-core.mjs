@@ -72,6 +72,28 @@ export function maskKey(key) {
 }
 
 /**
+ * The backend origin must be https (loopback-http allowed for the local e2e
+ * harness) before we attach the live store bearer to a request — a hostile
+ * CRUSTDATA_SKILLS_BASE_URL must not be able to forward the key to any origin (C3).
+ */
+export function isSecureBaseUrl(s) {
+  let u;
+  try {
+    u = new URL(String(s));
+  } catch {
+    return false;
+  }
+  if (u.protocol === "https:") return true;
+  return u.protocol === "http:" && (u.hostname === "127.0.0.1" || u.hostname === "localhost" || u.hostname === "::1" || u.hostname === "[::1]");
+}
+
+// Aggregate wall-clock budget for one sync pass, kept safely under the hook's
+// 60s SessionStart timeout (hooks/hooks.json). N granted skills download
+// sequentially; without an aggregate cap a slow/large set would freeze session
+// start (C7). Skills past the budget are deferred to the next session.
+export const RUN_BUDGET_MS = 45_000;
+
+/**
  * A slug is used verbatim as a directory name under the plugin skills root, so
  * it must be a single safe path segment: alphanumeric start, then [a-z0-9._-].
  * Anything else from the server is refused client-side (defense in depth — the
@@ -94,7 +116,10 @@ export function isSafeRelPath(p) {
   for (const seg of segments) {
     if (seg === "" || seg === "." || seg === "..") return false;
   }
-  if (segments[0] === MARKER_FILENAME) return false;
+  // Reserve the marker name CASE-INSENSITIVELY: on a case-insensitive FS
+  // (APFS/NTFS) a served `.Crustdata-Lock` would otherwise land on top of our
+  // `.crustdata-lock` and impersonate the trust marker.
+  if (segments[0].toLowerCase() === MARKER_FILENAME.toLowerCase()) return false;
   return true;
 }
 
@@ -391,14 +416,17 @@ export function extractSkillFiles(zip) {
 // ── filesystem: write, swap, remove ──────────────────────────────────────────
 
 /**
- * Write verified files under destDir, restoring the executable bit the zip
- * carried (0o755 vs 0o644). destDir must be a fresh staging dir.
+ * Write verified files under destDir. Every file is written 0o644 — the zip's
+ * executable bit is deliberately NOT honored: a Claude skill is data (SKILL.md +
+ * references), no bundled skill needs +x, and a served zip must not be able to
+ * plant executable files in the plugin tree (least-privilege; C6/C18). destDir
+ * must be a fresh staging dir.
  */
 export function writeSkillTree(destDir, files) {
   for (const file of files) {
     const full = path.join(destDir, file.path);
     mkdirSync(path.dirname(full), { recursive: true });
-    writeFileSync(full, file.data, { mode: file.executable ? 0o755 : 0o644 });
+    writeFileSync(full, file.data, { mode: 0o644 });
   }
 }
 
@@ -418,6 +446,19 @@ export function installSkillAtomically({ skillsRoot, slug, files, marker }) {
     writeSkillTree(tmp, files);
     writeFileSync(path.join(tmp, MARKER_FILENAME), JSON.stringify(marker, null, 2) + "\n", { mode: 0o644 });
     if (existsSync(target)) {
+      // Re-validate the live folder's marker at WRITE time — the plan is up to a
+      // few seconds stale, and "never touch an unmanaged folder" (contract §4)
+      // must hold against a folder that stopped being ours between scan and now.
+      let liveMarker = null;
+      try {
+        liveMarker = parseMarker(readFileSync(path.join(target, MARKER_FILENAME), "utf8"));
+      } catch {
+        /* unreadable/absent → not ours */
+      }
+      if (!isValidMarker(liveMarker, slug)) {
+        rmSync(tmp, { recursive: true, force: true });
+        throw new Error(`refusing to overwrite skills/${slug}: it is no longer a Crustdata-managed folder`);
+      }
       const old = path.join(skillsRoot, `${OLD_PREFIX}${slug}-${nonce}`);
       renameSync(target, old);
       try {
@@ -523,6 +564,32 @@ async function fetchZip(fetchImpl, url, apiKey, timeoutMs) {
   if (Number.isFinite(declared) && declared > MAX_ZIP_BYTES) {
     return { ok: false, error: `zip download exceeds ${MAX_ZIP_BYTES} bytes` };
   }
+  // Stream with a HARD running cap: content-length is advisory, so a backend
+  // that omits or lies about it must not be able to force an unbounded buffer
+  // (bandwidth × the request timeout) on every session start (C5). Abort the
+  // read the moment the accumulated body crosses the limit.
+  const body = res.body;
+  if (body && typeof body.getReader === "function") {
+    const reader = body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_ZIP_BYTES) {
+          await reader.cancel().catch(() => {});
+          return { ok: false, error: `zip download exceeds ${MAX_ZIP_BYTES} bytes` };
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } catch (err) {
+      return { ok: false, error: `zip download failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
+    return { ok: true, zip: Buffer.concat(chunks, total) };
+  }
+  // Non-streaming response (e.g. a test fake) — buffer, then re-check the size.
   const zip = Buffer.from(await res.arrayBuffer());
   if (zip.length > MAX_ZIP_BYTES) {
     return { ok: false, error: `zip download exceeds ${MAX_ZIP_BYTES} bytes` };
@@ -539,13 +606,19 @@ async function fetchZip(fetchImpl, url, apiKey, timeoutMs) {
  * Returns { changed, results }: `changed` is true iff a mutation (install /
  * update / remove) SUCCEEDED — the caller emits the reloadSkills signal from it.
  */
-export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000 }) {
+export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000, runBudgetMs = RUN_BUDGET_MS, clock = () => Date.now() }) {
   // No key → no identity → gated sync is skipped entirely. Bundled base skills
   // are untouched and previously-fetched skills stay as-is (contract §6).
   if (typeof apiKey !== "string" || apiKey === "") {
     log("no CRUSTDATA_API_KEY in the environment — skipping gated skill sync");
     return { changed: false, results: [] };
   }
+  // Never attach the live bearer to an insecure/hostile origin (C3).
+  if (!isSecureBaseUrl(baseUrl)) {
+    log(`refusing to sync against a non-https base URL (${baseUrl}) — the API key would leak`);
+    return { changed: false, results: [] };
+  }
+  const runDeadline = clock() + runBudgetMs;
   const base = String(baseUrl).replace(/\/+$/, "");
   const skillsRoot = path.join(pluginRoot, "skills");
   cleanupStaleDirs(skillsRoot);
@@ -566,6 +639,12 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
     return { changed: false, results: [] };
   }
 
+  // Accepted risk (C13): an authoritative empty `{"skills":[]}` legitimately
+  // removes every managed skill (a full de-grant), so a backend that can forge
+  // this response could wipe the managed set. That backend is pinned to https +
+  // the trusted origin (isSecureBaseUrl above) and the delete only ever touches
+  // folders carrying our own validated marker — bundled/unmanaged skills are
+  // never removed — so the blast radius is "re-sync to restore," not data loss.
   const locals = readLocalSkills(skillsRoot);
   const actions = planSync(sync.body.skills, locals);
   const results = [];
@@ -607,6 +686,14 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
 
     // install | update — download the zip, extract with path validation, swap.
     const { slug, version } = action.skill;
+    // Stop starting new downloads once the aggregate budget is spent — the
+    // remaining skills sync on the next session start rather than risk freezing
+    // this one past the hook timeout (C7).
+    if (clock() >= runDeadline) {
+      log(`time budget (${runBudgetMs}ms) reached — deferring skills/${slug} to the next session`);
+      results.push({ slug, version, state: "deferred" });
+      continue;
+    }
     const state = action.type === "update" ? "updated" : "installed";
     try {
       const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);

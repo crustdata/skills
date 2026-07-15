@@ -187,3 +187,38 @@ test("getAccessToken: expired with no refresh_token → null, no network", async
     cleanup();
   }
 });
+
+// ── C2: refuse to refresh over an insecure/mismatched endpoint ────────────────
+
+test("getAccessToken: refuses to refresh when the persisted token_endpoint is http (C2)", async () => {
+  const { env, cleanup } = tempStore();
+  try {
+    writeStore(validStore({ expires_at: Date.now() - 1_000, token_endpoint: "http://evil.example/token" }), { env });
+    // fetch must never be called — the insecure endpoint is rejected before the POST.
+    assert.equal(await getAccessToken({ env, fetchImpl: noFetch }), null);
+  } finally {
+    cleanup();
+  }
+});
+
+// ── C4: single-flight the refresh across concurrent callers ───────────────────
+
+test("getAccessToken: concurrent refreshes issue ONE token POST (single-flight, C4)", async () => {
+  const { env, cleanup } = tempStore();
+  try {
+    writeStore(validStore({ expires_at: Date.now() - 1_000 }), { env });
+    let posts = 0;
+    const fetchImpl = async () => {
+      posts += 1;
+      await new Promise((r) => setTimeout(r, 40)); // hold the lock so the sibling must wait
+      return { ok: true, status: 200, json: async () => ({ access_token: "tok-refreshed", refresh_token: "refresh-2", expires_in: 3600 }) };
+    };
+    const [a, b] = await Promise.all([getAccessToken({ env, fetchImpl }), getAccessToken({ env, fetchImpl })]);
+    assert.equal(a, "tok-refreshed");
+    assert.equal(b, "tok-refreshed"); // the waiter picked up the freshly-written token
+    assert.equal(posts, 1); // the SAME refresh token was POSTed exactly once
+    assert.equal(readStore({ env }).refresh_token, "refresh-2"); // rotation persisted
+  } finally {
+    cleanup();
+  }
+});

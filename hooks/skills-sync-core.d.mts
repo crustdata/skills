@@ -62,7 +62,14 @@ export interface VerifiedFile {
   executable: boolean;
 }
 
-export type SyncResultState = "installed" | "updated" | "removed" | "failed" | "needs_permission" | "up_to_date";
+export type SyncResultState =
+  | "installed"
+  | "updated"
+  | "removed"
+  | "failed"
+  | "needs_permission"
+  | "up_to_date"
+  | "deferred";
 
 export interface SyncResult {
   slug: string;
@@ -79,6 +86,10 @@ export interface RunSyncOptions {
   log?: (message: string) => void;
   now?: () => Date;
   timeoutMs?: number;
+  /** Aggregate wall-clock budget for the pass; skills past it are deferred. */
+  runBudgetMs?: number;
+  /** Monotonic clock (ms) for the budget — injectable for tests. */
+  clock?: () => number;
 }
 
 export declare const MARKER_FILENAME: string;
@@ -87,10 +98,12 @@ export declare const OLD_PREFIX: string;
 export declare const MAX_ZIP_BYTES: number;
 export declare const MAX_TOTAL_UNCOMPRESSED_BYTES: number;
 export declare const MAX_FILE_BYTES: number;
+export declare const RUN_BUDGET_MS: number;
 
 export declare class ZipFormatError extends Error {}
 
 export declare function maskKey(key: string | undefined): string;
+export declare function isSecureBaseUrl(s: unknown): boolean;
 export declare function isSafeSlug(slug: unknown): boolean;
 export declare function isSafeRelPath(p: unknown): boolean;
 export declare function parseMarker(text: string): Marker | null;
