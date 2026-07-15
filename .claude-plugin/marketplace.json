@@ -1,0 +1,14 @@
+{
+  "name": "crustdata-skills",
+  "owner": {
+    "name": "Crustdata",
+    "email": "support@crustdata.co"
+  },
+  "plugins": [
+    {
+      "name": "crustdata",
+      "source": "./",
+      "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, bundled research skills, and per-account gated skills synced at session start."
+    }
+  ]
+}
