@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Crustdata Codex SessionStart hook — syncs gated per-account skills into the
- * plugin skills dir, reusing the shared client-agnostic engine in ../../core.
- * The Claude twin (hooks/skills-sync.mjs) is identical except for the env var
+ * plugin skills dir, reusing the client-agnostic engine in ./core (vendored
+ * from the repo's shared core/ by scripts/build-codex-plugin.mjs). The Claude
+ * twin (hooks/skills-sync.mjs) is identical except for the env var
  * (PLUGIN_ROOT vs CLAUDE_PLUGIN_ROOT) and the session-start signal shape.
  *
  * Zero dependencies (Node built-ins + global fetch), no install step. A crash
@@ -24,8 +25,8 @@
 
 import process from "node:process";
 
-import { getAccessToken } from "../../core/credential-store.mjs";
-import { runSync } from "../../core/skill-sync.mjs";
+import { getAccessToken } from "../core/credential-store.mjs";
+import { runSync } from "../core/skill-sync.mjs";
 
 const DEFAULT_BASE_URL = "https://skills.crustdata.com";
 

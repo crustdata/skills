@@ -6,5 +6,10 @@
   "homepage": "https://docs.crustdata.com",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Crustdata",
+    "shortDescription": "800M+ profiles & 200M+ companies via MCP, plus research skills.",
+    "category": "Data"
+  }
 }
