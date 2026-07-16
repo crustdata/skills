@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crustdata SessionStart hook — syncs gated skills into the plugin skills dir.
+ * Crustdata SessionStart hook — syncs your account's skills into the plugin skills dir.
  *
  * Runs on the CLIENT with zero dependencies (Node built-ins + global fetch),
  * no install step, no interactive stdin. All real logic lives in
@@ -10,7 +10,7 @@
  * Auth: the bearer normally comes from the shared credential store written by
  * `bin/crustdata-login.mjs` (silently refreshed when expired) — the same store
  * the MCP headersHelper reads. Neither store nor env key → graceful no-op:
- * gated sync is skipped, bundled skills keep working.
+ * the sync is skipped, bundled skills keep working.
  *
  * Environment (documented in docs/skills-registry-contract.md §4):
  *   CRUSTDATA_API_KEY         — optional override: when set it wins over the
@@ -49,7 +49,7 @@ export async function main() {
     return;
   }
   if (typeof globalThis.fetch !== "function") {
-    logLine("global fetch unavailable (Node < 18?) — skipping gated skill sync");
+    logLine("global fetch unavailable (Node < 18?) — skipping skill sync");
     return;
   }
   // Env var (when set) wins over the OAuth credential store; the store token is
@@ -57,7 +57,7 @@ export async function main() {
   // and runSync no-ops exactly like the historical no-key path.
   const apiKey = envKey !== "" ? envKey : ((await getAccessToken()) ?? undefined);
   if (apiKey === undefined) {
-    logLine(`not signed in — to enable gated skills, run: node "${pluginRoot}/bin/crustdata-login.mjs"`);
+    logLine(`not signed in — run: node "${pluginRoot}/bin/crustdata-login.mjs" to sign in`);
   }
   const { changed } = await runSync({
     apiKey,

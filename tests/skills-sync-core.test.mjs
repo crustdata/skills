@@ -166,7 +166,7 @@ test("planSync: install / update / up_to_date / collision / postinstall / remove
     { slug: "bumped", version: "2.0.0" }, // update (local marker older)
     { slug: "same", version: "1.0.0" }, // up_to_date
     { slug: "unmanaged", version: "1.0.0" }, // collision (folder, no marker)
-    { slug: "gated", version: "1.0.0", has_postinstall: true }, // postinstall_gated
+    { slug: "needs-setup", version: "1.0.0", has_postinstall: true }, // postinstall_permission
     { slug: "../evil", version: "1.0.0" }, // invalid_entry
   ];
   const mk = (slug, version) => ({ slug, version, managed_by: "crustdata" });
@@ -182,7 +182,7 @@ test("planSync: install / update / up_to_date / collision / postinstall / remove
   assert.deepEqual(byType.update, ["bumped"]);
   assert.deepEqual(byType.up_to_date, ["same"]);
   assert.deepEqual(byType.collision, ["unmanaged"]);
-  assert.deepEqual(byType.postinstall_gated, ["gated"]);
+  assert.deepEqual(byType.postinstall_permission, ["needs-setup"]);
   assert.deepEqual(byType.invalid_entry, ["../evil"]);
   assert.deepEqual(byType.remove, ["gone"]);
 });

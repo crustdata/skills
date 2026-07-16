@@ -40,14 +40,12 @@ claude plugin marketplace add crustdata/skills
 claude plugin install crustdata@crustdata-skills
 ```
 
-This adds the Crustdata MCP server (800M+ profiles, 200M+ companies), the bundled research skill, and a session-start hook that syncs your account's gated skills.
+This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skill.
 
-**2. Sign in** so the MCP tools and the gated-skill sync can authenticate — one token serves both. Either:
+**2. Sign in** so the MCP tools can authenticate. Either:
 
 - **set `CRUSTDATA_API_KEY`** in your environment (simplest), or
-- **run the login the plugin prints** — at session start, if you're not signed in, the sync hook logs the exact command (`node "<resolved path>/bin/crustdata-login.mjs"`) for a one-time browser sign-in, no key to paste. (Don't type `$CLAUDE_PLUGIN_ROOT/…` yourself — it's only set inside the plugin.)
-
-Gated skills then sync into the plugin at each session start and load in the same session.
+- **run the login the plugin prints** — at session start, if you're not signed in, the plugin logs the exact command (`node "<resolved path>/bin/crustdata-login.mjs"`) for a one-time browser sign-in, no key to paste. (Don't type `$CLAUDE_PLUGIN_ROOT/…` yourself — it's only set inside the plugin.)
 
 ---
 

@@ -316,7 +316,7 @@ export function readLocalSkills(skillsRoot) {
  *   - malformed entry            → invalid_entry (skipped; suppresses removal)
  *   - folder present, no marker  → collision (needs_permission, never overwrite)
  *   - marker matches version     → up_to_date (no writes, no report)
- *   - has_postinstall            → postinstall_gated (needs_permission, no install)
+ *   - has_postinstall            → postinstall_permission (needs_permission, no install)
  *   - no folder                  → install
  *   - marker version differs     → update
  * Then: every locally-managed folder not in the response → remove.
@@ -357,9 +357,9 @@ export function planSync(remoteSkills, locals) {
       continue;
     }
     if (skill.has_postinstall === true) {
-      // Gated skills never auto-run a postinstall; we also never half-install
-      // a skill whose setup step didn't run (contract: needs_permission).
-      actions.push({ type: "postinstall_gated", skill });
+      // A skill with a postinstall step never auto-runs it; we also never
+      // half-install a skill whose setup step didn't run (contract: needs_permission).
+      actions.push({ type: "postinstall_permission", skill });
       continue;
     }
     actions.push(marker !== null ? { type: "update", skill } : { type: "install", skill });
@@ -607,10 +607,10 @@ async function fetchZip(fetchImpl, url, apiKey, timeoutMs) {
  * update / remove) SUCCEEDED — the caller emits the reloadSkills signal from it.
  */
 export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000, runBudgetMs = RUN_BUDGET_MS, clock = () => Date.now() }) {
-  // No key → no identity → gated sync is skipped entirely. Bundled base skills
+  // No key → no identity → the sync is skipped entirely. Bundled base skills
   // are untouched and previously-fetched skills stay as-is (contract §6).
   if (typeof apiKey !== "string" || apiKey === "") {
-    log("no CRUSTDATA_API_KEY in the environment — skipping gated skill sync");
+    log("no CRUSTDATA_API_KEY in the environment — skipping skill sync");
     return { changed: false, results: [] };
   }
   // Never attach the live bearer to an insecure/hostile origin (C3).
@@ -665,7 +665,7 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       results.push({ slug, version, state: "needs_permission", error: `local folder "skills/${slug}" exists without a Crustdata marker; refusing to overwrite` });
       continue;
     }
-    if (action.type === "postinstall_gated") {
+    if (action.type === "postinstall_permission") {
       const { slug, version } = action.skill;
       log(`skills/${slug}@${version} declares a postinstall step — not installing without permission`);
       results.push({ slug, version, state: "needs_permission", error: "version has a postinstall step; automatic install is disabled" });

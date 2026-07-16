@@ -38,7 +38,7 @@ export type PlanAction =
   | { type: "update"; skill: RemoteSkill }
   | { type: "up_to_date"; skill: RemoteSkill }
   | { type: "collision"; skill: RemoteSkill }
-  | { type: "postinstall_gated"; skill: RemoteSkill }
+  | { type: "postinstall_permission"; skill: RemoteSkill }
   | { type: "remove"; slug: string; marker: Marker }
   | { type: "invalid_entry"; slug: string };
 
