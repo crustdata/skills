@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { writeStore } from "../core/credential-store.mjs";
 
-const HELPER = fileURLToPath(new URL("../bin/crustdata-headers.mjs", import.meta.url));
+const HELPER = fileURLToPath(new URL("../claude/bin/crustdata-headers.mjs", import.meta.url));
 
 /** Run the helper as Claude Code would, against an isolated credential store. */
 function runHelper(dir, extraEnv = {}) {

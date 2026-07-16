@@ -18,7 +18,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-const LOGIN = fileURLToPath(new URL("../bin/crustdata-login.mjs", import.meta.url));
+const LOGIN = fileURLToPath(new URL("../claude/bin/crustdata-login.mjs", import.meta.url));
 
 function b64url(buf) {
   return Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

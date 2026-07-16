@@ -2,7 +2,7 @@
 /**
  * Crustdata Codex SessionStart hook — syncs gated per-account skills into the
  * plugin skills dir, reusing the client-agnostic engine in ./core (vendored
- * from the repo's shared core/ by scripts/build-codex-plugin.mjs). The Claude
+ * from the repo's shared core/ by scripts/build-plugins.mjs). The Claude
  * twin (hooks/skills-sync.mjs) is identical except for the env var
  * (PLUGIN_ROOT vs CLAUDE_PLUGIN_ROOT) and the session-start signal shape.
  *

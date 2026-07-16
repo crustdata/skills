@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "crustdata",
-      "source": "./",
+      "source": "./claude",
       "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, bundled research skills, and per-account gated skills synced at session start."
     }
   ]

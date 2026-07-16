@@ -13,11 +13,20 @@ Codex installs a plugin by copying **only** the plugin root into its cache, so e
 ```
 codex plugin marketplace add crustdata/skills
 codex plugin add crustdata@crustdata
-codex mcp login crustdata                       # MCP tools auth (Codex-native OAuth/DCR)
-node "$PLUGIN_ROOT/bin/crustdata-login.mjs"      # gated-skill hook auth (see note)
+codex mcp login crustdata            # the MCP data tools (Codex-native OAuth/DCR)
 ```
 
-`CRUSTDATA_API_KEY` still works as an override for the hook (local / pre-OAuth).
+That's the MCP tools and the bundled public skills. **Gated per-account skills** need two more one-time steps.
+
+## Enable gated skills
+
+**1. Trust the SessionStart hook.** Codex does **not** auto-run a plugin's hooks — the first time, it prompts you to review and trust this plugin's `SessionStart` hook. Approve it. Until you do, gated sync won't run (the MCP tools and bundled skills work regardless).
+
+**2. Sign in for the hook.** The hook reads a Crustdata token from the shared `~/.crustdata` store. Either:
+- set **`CRUSTDATA_API_KEY`** in your environment (simplest), or
+- run the login command **the hook prints** — when you're not signed in it logs `node "<resolved path>/bin/crustdata-login.mjs"` with the real cache path filled in; run that. (Don't type `$PLUGIN_ROOT/…` yourself — `PLUGIN_ROOT` is set only for hooks, not your shell.)
+
+The MCP tools use Codex's own `codex mcp login` (Codex holds that token; a hook can't read it), which is why the gated-skill hook needs its own credential. If gated skills move to MCP-tool delivery (a backend change), this second login goes away.
 
 ## Layout
 
@@ -32,25 +41,20 @@ codex/
 └── skills/                     # VENDORED from repo-root skills/ (single source)
 ```
 
-## Two logins, on purpose
-
-The **MCP tools** authenticate through Codex's own `codex mcp login` (Codex holds that token; a hook can't read it). The **gated-skill hook** therefore needs its own credential — `bin/crustdata-login.mjs` writes the shared `~/.crustdata` store the hook reads. If gated skills move to MCP-tool delivery (a backend change), this second login goes away.
-
 ## Development
 
-`codex/core/` and `codex/skills/` are **generated** — do not edit them directly. Edit the single source at the repo root (`core/`, `skills/`), then re-vendor:
+`codex/core/` and `codex/skills/` are **generated** — do not edit them directly. Edit the single source at the repo root (`core/`, `skills/`), then re-vendor (this also refreshes the Claude plugin's copies):
 
 ```
-node scripts/build-codex-plugin.mjs
+node scripts/build-plugins.mjs
 ```
 
-`tests/codex-vendor.test.mjs` fails if the vendored copies drift from the source.
+`tests/vendor.test.mjs` fails if any plugin's vendored copies drift from the source.
 
-## Verify against a live Codex before merge
+## Live-verified
 
-Built to the current Codex docs (<https://learn.chatgpt.com/docs/build-plugins>); confirm against a real `codex` install:
+A temp `codex plugin marketplace add` + `codex plugin add crustdata@crustdata` install works: the marketplace surfaces the plugin, the cache holds real `core/` + `skills/` + `hooks/` + `bin/` + `.mcp.json` + `.codex-plugin/plugin.json`, and the installed hook imports cleanly and no-ops when not signed in.
 
-1. **Marketplace surfaces the plugin** — `codex plugin marketplace add …` then `codex plugin list --available` lists `crustdata`, and `codex plugin add crustdata@crustdata` installs it.
-2. **`.mcp.json` OAuth schema** — that `{"url","auth":"oauth"}` is the accepted remote-server shape (vs `bearer_token_env_var`), and `codex mcp login crustdata` completes DCR against `install.crustdata.com` (mcp2 implements DCR).
-3. **`codex mcp login` trigger** — whether the plugin's `ON_INSTALL` policy prompts it, or it stays a one-time manual step.
-4. **Gated-skill timing** — a skill the hook writes at `SessionStart` may only register on the next session (discovery is at startup); confirm and adjust the `additionalContext` note / consider `~/.agents/skills` as the write target if `PLUGIN_ROOT` is read-only.
+Still to confirm against a live session:
+- **`.mcp.json` OAuth schema** — that `{"url","auth":"oauth"}` is the accepted remote-server shape (vs `bearer_token_env_var`), and `codex mcp login crustdata` completes DCR against `install.crustdata.com` (mcp2 implements DCR).
+- **Gated-skill timing** — a skill the hook writes at `SessionStart` may only register on the next session (discovery is at startup); switch the write target to `~/.agents/skills` if `PLUGIN_ROOT` is read-only.
