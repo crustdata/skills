@@ -1,5 +1,6 @@
 {
   "name": "crustdata-skills",
+  "description": "Crustdata's official Claude plugin — MCP access to 800M+ profiles and 200M+ companies, bundled research skills, and per-account gated skills.",
   "owner": {
     "name": "Crustdata",
     "email": "support@crustdata.co"
