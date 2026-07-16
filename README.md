@@ -31,30 +31,23 @@ Every skill works with **Claude.ai** (web), **Claude Desktop** (macOS/Windows ap
 3. **Connect Gmail** — find Gmail in your Connectors list and click "Connect"
 4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
-### Claude Code — CLI for developers
+### Claude Code — install the plugin
 
-**1. Add Crustdata** to your MCP config:
-
-```json
-{
-  "mcpServers": {
-    "crustdata": {
-      "url": "https://mcp.crustdata.com/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-Get your API key at [crustdata.com](https://crustdata.com).
-
-**2. Clone this repo:**
+**1. Install** from the Crustdata marketplace:
 
 ```bash
-git clone https://github.com/crustdata/skills.git
+claude plugin marketplace add crustdata/skills
+claude plugin install crustdata@crustdata-skills
 ```
+
+This adds the Crustdata MCP server (800M+ profiles, 200M+ companies), the bundled research skill, and a session-start hook that syncs your account's gated skills.
+
+**2. Sign in** so the MCP tools and the gated-skill sync can authenticate — one token serves both. Either:
+
+- **set `CRUSTDATA_API_KEY`** in your environment (simplest), or
+- **run the login the plugin prints** — at session start, if you're not signed in, the sync hook logs the exact command (`node "<resolved path>/bin/crustdata-login.mjs"`) for a one-time browser sign-in, no key to paste. (Don't type `$CLAUDE_PLUGIN_ROOT/…` yourself — it's only set inside the plugin.)
+
+Gated skills then sync into the plugin at each session start and load in the same session.
 
 ---
 
