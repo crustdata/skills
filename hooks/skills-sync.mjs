@@ -41,7 +41,7 @@ function logLine(message) {
 
 export async function main() {
   const pluginRoot = (process.env.CLAUDE_PLUGIN_ROOT ?? "").trim();
-  const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
+  const envKey = (process.env.CLAUDE_PLUGIN_OPTION_CRUSTDATA_API_KEY ?? process.env.CRUSTDATA_API_KEY ?? "").trim();
   const baseUrl = (process.env.CRUSTDATA_SKILLS_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
 
   if (pluginRoot === "") {
@@ -52,12 +52,13 @@ export async function main() {
     logLine("global fetch unavailable (Node < 18?) — skipping skill sync");
     return;
   }
-  // Env var (when set) wins over the OAuth credential store; the store token is
-  // silently refreshed by getAccessToken when expired. Both absent → undefined,
-  // and runSync no-ops exactly like the historical no-key path.
+  // The plugin-config key (CLAUDE_PLUGIN_OPTION_CRUSTDATA_API_KEY, prompted natively at
+  // enable time) or an explicit CRUSTDATA_API_KEY wins; otherwise fall back to the OAuth
+  // credential store (silently refreshed). All absent → undefined, and runSync no-ops
+  // exactly like the historical no-key path.
   const apiKey = envKey !== "" ? envKey : ((await getAccessToken()) ?? undefined);
   if (apiKey === undefined) {
-    logLine(`not signed in — run: node "${pluginRoot}/bin/crustdata-login.mjs" to sign in`);
+    logLine("no Crustdata API key — set it in the plugin config to enable private-skill sync");
   }
   const { changed } = await runSync({
     apiKey,

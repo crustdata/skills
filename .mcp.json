@@ -3,7 +3,7 @@
     "crustdata": {
       "type": "http",
       "url": "https://install.crustdata.com/mcp",
-      "headersHelper": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-headers.mjs\""
+      "headers": { "Authorization": "Bearer ${user_config.crustdata_api_key}" }
     }
   }
 }
