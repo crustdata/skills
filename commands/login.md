@@ -1,21 +1,12 @@
 ---
-description: Sign in to Crustdata — one browser OAuth for the MCP tools and private-skill sync
-allowed-tools: Bash(node:*)
+description: Sign in to Crustdata — opens the browser directly (no AI in the loop)
+allowed-tools: Bash(nohup:*), Bash(node:*)
 ---
 
-Sign this machine in to Crustdata. One OAuth covers **both** the Crustdata MCP tools
-and the private-skill sync — they share `~/.crustdata/credentials.json`.
+!`nohup node "${CLAUDE_PLUGIN_ROOT}/bin/crustdata-login.mjs" </dev/null >/tmp/crustdata-login.log 2>&1 &`
 
-Run the plugin's login script with the Bash tool and stream its stderr back to me:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/crustdata-login.mjs"
-```
-
-It opens a browser for a one-time sign-in (no key to paste), captures the OAuth callback
-on a loopback port, and saves the token. When it finishes, tell me whether sign-in
-succeeded (it prints a masked token tail) — never echo the full token.
-
-No local browser (SSH / headless / a cloud session)? The loopback redirect can't reach
-you — run `CRUSTDATA_LOGIN_NO_BROWSER=1 node "${CLAUDE_PLUGIN_ROOT}/bin/crustdata-login.mjs"`
-and open the printed URL instead, or set `CRUSTDATA_API_KEY` in the environment.
+Opening your browser to sign in to Crustdata — finish the sign-in there and you're set. The
+token is saved to `~/.crustdata/credentials.json` and used by both the MCP tools and the
+skill sync. If no browser opened, check `/tmp/crustdata-login.log`, or run
+`CRUSTDATA_LOGIN_NO_BROWSER=1 node "${CLAUDE_PLUGIN_ROOT}/bin/crustdata-login.mjs"`, or set
+`CRUSTDATA_API_KEY`.
