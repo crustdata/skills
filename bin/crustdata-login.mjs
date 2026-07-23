@@ -396,6 +396,20 @@ export async function runLogin() {
 // Run only when executed directly; tests import this module without side effects.
 const invokedAs = process.argv[1] === undefined ? "" : path.resolve(process.argv[1]);
 if (invokedAs !== "" && fileURLToPath(import.meta.url) === invokedAs) {
+  // `--detach`: re-launch ourselves as a detached child (new session; stdio → /dev/null via
+  // libuv, NOT a shell redirect) and return immediately. Lets a caller like a Claude Code
+  // `/command` fire the login without shell redirection/backgrounding — the child owns the
+  // browser + loopback OAuth and survives after the caller's process returns.
+  if (process.argv.slice(2).includes("--detach") && process.env.CRUSTDATA_LOGIN_DETACHED !== "1") {
+    const child = spawn(process.execPath, [fileURLToPath(import.meta.url), ...process.argv.slice(2).filter((a) => a !== "--detach")], {
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, CRUSTDATA_LOGIN_DETACHED: "1" },
+    });
+    child.unref();
+    logLine("browser sign-in started — finish it in the window that opens");
+    process.exit(0);
+  }
   let exitCode = 1;
   try {
     exitCode = await runLogin();
