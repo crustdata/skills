@@ -44,7 +44,7 @@ This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bun
 
 **2. Sign in** so the MCP tools can authenticate. Any of:
 
-- **run `/crustdata:login`** — a one-time browser sign-in (OAuth, no key to paste); the token is shared by the MCP tools and the skill sync, or
+- **type `crustdata login`** — opens a browser for a one-time sign-in (OAuth, no key to paste); nothing is said in the chat, and the token is shared by the MCP tools and the skill sync, or
 - **set `CRUSTDATA_API_KEY`** in your environment (simplest, no browser), or
 - at session start, if you're not signed in, the plugin also prints the raw `node "<resolved path>/bin/crustdata-login.mjs"` command you can run directly.
 
