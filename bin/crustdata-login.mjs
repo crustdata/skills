@@ -407,8 +407,7 @@ if (invokedAs !== "" && fileURLToPath(import.meta.url) === invokedAs) {
       env: { ...process.env, CRUSTDATA_LOGIN_DETACHED: "1" },
     });
     child.unref();
-    logLine("browser sign-in started — finish it in the window that opens");
-    process.exit(0);
+    process.exit(0); // silent by design — the browser opening is the only feedback
   }
   let exitCode = 1;
   try {
