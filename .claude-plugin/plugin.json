@@ -8,13 +8,5 @@
     "email": "support@crustdata.co",
     "url": "https://crustdata.com"
   },
-  "homepage": "https://docs.crustdata.com",
-  "userConfig": {
-    "crustdata_api_key": {
-      "type": "string",
-      "title": "Crustdata API key",
-      "description": "Your Crustdata API key (get one at crustdata.com). Used by the MCP tools and the private-skill sync.",
-      "sensitive": true
-    }
-  }
+  "homepage": "https://docs.crustdata.com"
 }

@@ -42,7 +42,11 @@ claude plugin install crustdata@crustdata-plugin
 
 This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skill.
 
-**2. Add your API key** — when you enable the plugin, Claude Code prompts for your **Crustdata API key** (get one at [crustdata.com](https://crustdata.com)). It's stored securely and used by both the MCP tools and the private-skill sync — no separate sign-in. (You can also set `CRUSTDATA_API_KEY` in your environment instead.)
+**2. Sign in** so the MCP tools can authenticate. Any of:
+
+- **run `/crustdata:login`** — a one-time browser sign-in (OAuth, no key to paste); the token is shared by the MCP tools and the skill sync, or
+- **set `CRUSTDATA_API_KEY`** in your environment (simplest, no browser), or
+- at session start, if you're not signed in, the plugin also prints the raw `node "<resolved path>/bin/crustdata-login.mjs"` command you can run directly.
 
 ---
 
