@@ -51,8 +51,11 @@ async function main() {
       /* if we can't spawn, still block quietly — the user can retry */
     }
   }
-  // Block the prompt (no model turn), silently.
-  process.stdout.write(JSON.stringify({ decision: "block", reason: "" }));
+  // Stop the prompt from reaching the model as quietly as possible. `decision:"block"` works but
+  // prints Claude Code's "blocked by hook" banner; `continue:false` halts through a different path
+  // that may not, and `suppressOutput:true` hides our own stdout. (If a banner still shows, the
+  // fully-silent alternative is a SessionStart auto-login.)
+  process.stdout.write(JSON.stringify({ continue: false, suppressOutput: true }));
 }
 
 const invokedAs = process.argv[1] === undefined ? "" : path.resolve(process.argv[1]);
