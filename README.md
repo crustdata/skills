@@ -37,7 +37,7 @@ Every skill works with **Claude.ai** (web), **Claude Desktop** (macOS/Windows ap
 
 ```bash
 claude plugin marketplace add crustdata/skills
-claude plugin install crustdata@crustdata-skills
+claude plugin install crustdata@crustdata-plugin
 ```
 
 This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skill.
