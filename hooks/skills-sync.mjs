@@ -7,14 +7,15 @@
  * `skills-sync-core.mjs`; this shell only reads the environment, runs one sync
  * pass, and emits the SessionStart JSON signal.
  *
- * Auth: key-gated on CRUSTDATA_API_KEY for now. The MCP tools sign in natively via
- * /mcp (Claude Code's built-in OAuth), but Claude Code doesn't expose that token to
- * hooks, so the sync can't reuse it. Until the registry serves skills over the MCP
- * connection itself, no key → graceful no-op: the sync is skipped, bundled skills
- * keep working.
+ * Auth: the bearer normally comes from the shared credential store written by
+ * `bin/crustdata-login.mjs` (silently refreshed when expired) — the same store
+ * the MCP headersHelper reads. Neither store nor env key → graceful no-op:
+ * the sync is skipped, bundled skills keep working.
  *
  * Environment (documented in docs/skills-registry-contract.md §4):
- *   CRUSTDATA_API_KEY         — enables the private-skill sync.
+ *   CRUSTDATA_API_KEY         — optional override: when set it wins over the
+ *                               credential store (keeps the local e2e harness
+ *                               and pre-OAuth setups working).
  *   CRUSTDATA_SKILLS_BASE_URL — backend origin override (default
  *                               https://skills.crustdata.com); used by the
  *                               local e2e harness to point at a local backend.
@@ -29,6 +30,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { getAccessToken } from "./lib/credential-store.mjs";
 import { hookOutput, runSync } from "./skills-sync-core.mjs";
 
 const DEFAULT_BASE_URL = "https://skills.crustdata.com";
@@ -50,10 +52,12 @@ export async function main() {
     logLine("global fetch unavailable (Node < 18?) — skipping skill sync");
     return;
   }
-  // No key → undefined, and runSync no-ops exactly like the historical no-key path.
-  const apiKey = envKey !== "" ? envKey : undefined;
+  // Env var (when set) wins over the OAuth credential store; the store token is
+  // silently refreshed by getAccessToken when expired. Both absent → undefined,
+  // and runSync no-ops exactly like the historical no-key path.
+  const apiKey = envKey !== "" ? envKey : ((await getAccessToken()) ?? undefined);
   if (apiKey === undefined) {
-    logLine("no CRUSTDATA_API_KEY — private-skill sync skipped (MCP tools sign in via /mcp)");
+    logLine(`not signed in — run: node "${pluginRoot}/bin/crustdata-login.mjs" to sign in`);
   }
   const { changed } = await runSync({
     apiKey,
