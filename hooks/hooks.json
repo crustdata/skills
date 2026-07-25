@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/login-autostart.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-auth.mjs\" refresh",
             "timeout": 15
           },
           {
@@ -16,12 +16,13 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
+    "PreToolUse": [
       {
+        "matcher": "^mcp__crustdata__",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/login-trigger.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-auth.mjs\" check",
             "timeout": 10
           }
         ]
