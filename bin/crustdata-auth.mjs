@@ -18,7 +18,6 @@
  * bypassed entirely. Store: ${CRUSTDATA_CONFIG_DIR:-~/.crustdata}/credentials.json (0600),
  * silent refresh handled by the credential-store module.
  */
-import { realpathSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -77,17 +76,8 @@ async function main(cmd) {
   }
 }
 
-/** Resolve symlinks before comparing: npm/npx install bins as SYMLINKS, so a plain
- *  path.resolve(argv[1]) never equals the module path and main() would silently not run. */
-function realpathOrResolve(p) {
-  try {
-    return realpathSync(p);
-  } catch {
-    return path.resolve(p);
-  }
-}
-const invokedAs = process.argv[1] === undefined ? "" : realpathOrResolve(process.argv[1]);
-if (invokedAs !== "" && realpathOrResolve(fileURLToPath(import.meta.url)) === invokedAs) {
+const invokedAs = process.argv[1] === undefined ? "" : path.resolve(process.argv[1]);
+if (invokedAs !== "" && fileURLToPath(import.meta.url) === invokedAs) {
   let code = 1;
   try {
     code = await main(process.argv[2] ?? "");
