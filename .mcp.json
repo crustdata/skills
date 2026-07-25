@@ -2,8 +2,7 @@
   "mcpServers": {
     "crustdata": {
       "type": "http",
-      "url": "https://install.crustdata.com/mcp",
-      "headersHelper": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-headers.mjs\""
+      "url": "https://install.crustdata.com/mcp"
     }
   }
 }

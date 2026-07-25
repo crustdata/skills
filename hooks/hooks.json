@@ -10,17 +10,6 @@
           }
         ]
       }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/login-trigger.mjs\"",
-            "timeout": 10
-          }
-        ]
-      }
     ]
   }
 }
