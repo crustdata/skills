@@ -1,0 +1,13 @@
+{
+  "name": "crustdata-skills",
+  "version": "0.1.0",
+  "description": "Crustdata skills + Claude Code plugin. One-time sign-in from any terminal: `npx -y github:crustdata/skills login` (browser OAuth; the token is shared by the MCP tools and the skill sync).",
+  "license": "MIT",
+  "repository": "github:crustdata/skills",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "crustdata": "./bin/crustdata-auth.mjs"
+  }
+}
