@@ -42,7 +42,7 @@ claude plugin install crustdata@crustdata-plugin
 
 This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skill.
 
-**2. Sign in — once.** The first session after install, your browser opens automatically for a one-time sign-in (OAuth, no key to paste, nothing shown in the chat). That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed; the browser only ever reopens if the token dies. Prefer no browser? Set `CRUSTDATA_API_KEY` in your environment and the sign-in is skipped entirely.
+**2. Sign in — once.** The first session after install, your browser opens automatically for a one-time sign-in (OAuth, no key to paste, nothing shown in the chat). That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed; the browser only ever reopens if the token dies. Need it on demand (skipped the tab, re-auth, account switch)? Type **`crustdata login`** — the browser opens and one confirmation line appears, no AI involved. Prefer no browser at all? Set `CRUSTDATA_API_KEY` and the sign-in is skipped entirely.
 
 ---
 
