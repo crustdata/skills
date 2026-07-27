@@ -31,30 +31,18 @@ Every skill works with **Claude.ai** (web), **Claude Desktop** (macOS/Windows ap
 3. **Connect Gmail** — find Gmail in your Connectors list and click "Connect"
 4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
-### Claude Code — CLI for developers
+### Claude Code — install the plugin
 
-**1. Add Crustdata** to your MCP config:
-
-```json
-{
-  "mcpServers": {
-    "crustdata": {
-      "url": "https://mcp.crustdata.com/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-Get your API key at [crustdata.com](https://crustdata.com).
-
-**2. Clone this repo:**
+**1. Install** from the Crustdata marketplace:
 
 ```bash
-git clone https://github.com/crustdata/skills.git
+claude plugin marketplace add crustdata/skills
+claude plugin install crustdata@crustdata-plugin
 ```
+
+This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and Crustdata's research skills (published into `skills/` and synced per-account from the registry).
+
+**2. Sign in — once, when you're ready.** Run **`/crustdata:login`**: your browser opens for a one-time OAuth sign-in (no key to paste) and Claude confirms in one line. That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed at session start. Until you sign in, nothing nags you: Crustdata tool calls are simply gated with a one-line "run /crustdata:login" pointer. Prefer no browser? Set `CRUSTDATA_API_KEY` and the gate passes without signing in.
 
 ---
 
