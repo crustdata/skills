@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { writeStore } from "../hooks/lib/credential-store.mjs";
 
-const CLI = fileURLToPath(new URL("../bin/crustdata-auth.mjs", import.meta.url));
+const CLI = fileURLToPath(new URL("../scripts/crustdata-auth.mjs", import.meta.url));
 
 /** Run the CLI with a controlled env; returns {code, stdout, stderr}. */
 function run(cmd, env) {

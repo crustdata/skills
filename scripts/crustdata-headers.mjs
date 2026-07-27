@@ -8,7 +8,7 @@
  *   - otherwise → {} plus a stderr hint pointing at the login CLI
  *
  * The token comes from the shared credential store written by
- * bin/crustdata-login.mjs (silently refreshed here when expired). The
+ * scripts/crustdata-login.mjs (silently refreshed here when expired). The
  * CRUSTDATA_API_KEY environment variable, when set, overrides the store —
  * the pre-OAuth configuration keeps working unchanged.
  *
@@ -28,6 +28,6 @@ if (typeof token === "string" && token !== "") {
   process.stdout.write(JSON.stringify({ Authorization: `Bearer ${token}` }) + "\n");
 } else {
   process.stdout.write("{}\n");
-  process.stderr.write('[crustdata] not signed in — run: node "$CLAUDE_PLUGIN_ROOT/bin/crustdata-login.mjs"\n');
+  process.stderr.write('[crustdata] not signed in: run /crustdata:login\n');
 }
 process.exit(0);

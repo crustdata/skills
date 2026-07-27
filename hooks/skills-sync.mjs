@@ -8,7 +8,7 @@
  * pass, and emits the SessionStart JSON signal.
  *
  * Auth: the bearer normally comes from the shared credential store written by
- * `bin/crustdata-login.mjs` (silently refreshed when expired) — the same store
+ * `scripts/crustdata-login.mjs` (silently refreshed when expired) — the same store
  * the MCP headersHelper reads. Neither store nor env key → graceful no-op:
  * the sync is skipped, bundled skills keep working.
  *
@@ -57,7 +57,7 @@ export async function main() {
   // and runSync no-ops exactly like the historical no-key path.
   const apiKey = envKey !== "" ? envKey : ((await getAccessToken()) ?? undefined);
   if (apiKey === undefined) {
-    logLine(`not signed in — run: node "${pluginRoot}/bin/crustdata-login.mjs" to sign in`);
+    logLine(`not signed in: run /crustdata:login to sign in`);
   }
   const { changed } = await runSync({
     apiKey,

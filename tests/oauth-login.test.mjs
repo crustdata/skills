@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 
-import { base64url, browserCommand, buildAuthorizeUrl, discover, pkcePair, registerClient } from "../bin/crustdata-login.mjs";
+import { base64url, browserCommand, buildAuthorizeUrl, discover, pkcePair, registerClient } from "../scripts/crustdata-login.mjs";
 
 // ── PKCE ─────────────────────────────────────────────────────────────────────
 

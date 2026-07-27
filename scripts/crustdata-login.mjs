@@ -2,7 +2,7 @@
 /**
  * Crustdata login — OAuth 2.1 Authorization Code + PKCE (S256), public client.
  *
- *   node "$CLAUDE_PLUGIN_ROOT/bin/crustdata-login.mjs"
+ *   node "$CLAUDE_PLUGIN_ROOT/scripts/crustdata-login.mjs"
  *
  * Flow: discover the authorization server via RFC 8414 well-known metadata
  * (fallback: RFC 9728 protected-resource metadata → its authorization server),
