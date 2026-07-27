@@ -40,7 +40,7 @@ claude plugin marketplace add crustdata/skills
 claude plugin install crustdata@crustdata-plugin
 ```
 
-This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skill.
+This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and Crustdata's research skills (published into `skills/` and synced per-account from the registry).
 
 **2. Sign in — once, when you're ready.** Run **`/crustdata:login`**: your browser opens for a one-time OAuth sign-in (no key to paste) and Claude confirms in one line. That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed at session start. Until you sign in, nothing nags you: Crustdata tool calls are simply gated with a one-line "run /crustdata:login" pointer. Prefer no browser? Set `CRUSTDATA_API_KEY` and the gate passes without signing in.
 
