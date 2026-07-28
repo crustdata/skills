@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 
-import { base64url, browserCommand, buildAuthorizeUrl, discover, pkcePair, registerClient } from "../scripts/crustdata-login.mjs";
+import { base64url, browserCommand, buildAuthorizeUrl, discover, isWsl, pkcePair, registerClient } from "../scripts/crustdata-login.mjs";
 
 // ── PKCE ─────────────────────────────────────────────────────────────────────
 
@@ -177,6 +177,24 @@ test("registerClient: DCR failure and no static client_id → throws a human err
 });
 
 // ── browser command ──────────────────────────────────────────────────────────
+
+test("browserCommand hands the URL to Windows under WSL (powershell.exe, quotes escaped)", () => {
+  const url = "https://as.example/authorize?a=1&b='2'";
+  const wslEnv = { WSL_DISTRO_NAME: "Ubuntu" };
+  assert.deepEqual(browserCommand(url, "linux", wslEnv), {
+    cmd: "powershell.exe",
+    args: ["-NoProfile", "-Command", "Start-Process 'https://as.example/authorize?a=1&b=''2'''"],
+  });
+  // Plain linux (no WSL markers, no microsoft /proc/version) keeps xdg-open.
+  assert.deepEqual(browserCommand(url, "linux", {}), { cmd: "xdg-open", args: [url] });
+});
+
+test("isWsl reads the env markers and falls back to /proc/version", () => {
+  assert.equal(isWsl({ WSL_DISTRO_NAME: "Ubuntu" }, () => ""), true);
+  assert.equal(isWsl({ WSL_INTEROP: "/run/WSL/1_interop" }, () => ""), true);
+  assert.equal(isWsl({}, () => "Linux version 6.6.36.6-microsoft-standard-WSL2"), true);
+  assert.equal(isWsl({}, () => "Linux version 6.8.0-generic (ubuntu)"), false);
+});
 
 test("browserCommand picks the platform opener and escapes & for cmd.exe", () => {
   const url = "https://as.example/authorize?a=1&b=2";

@@ -27,6 +27,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
 import process from "node:process";
@@ -204,11 +205,31 @@ export function buildAuthorizeUrl(meta, { clientId, redirectUri, challenge, stat
   return url.toString();
 }
 
+/** True under Windows Subsystem for Linux, where platform is "linux" but the browser lives on
+ *  the Windows side. Env markers first (cheap, injectable for tests); /proc/version as fallback. */
+export function isWsl(env = process.env, readProcVersion = defaultProcVersion) {
+  if ((env.WSL_DISTRO_NAME ?? "") !== "" || (env.WSL_INTEROP ?? "") !== "") return true;
+  return readProcVersion().toLowerCase().includes("microsoft");
+}
+
+function defaultProcVersion() {
+  try {
+    return readFileSync("/proc/version", "utf8");
+  } catch {
+    return "";
+  }
+}
+
 /** Platform-appropriate browser-open command (pure, for tests). */
-export function browserCommand(url, platform = process.platform) {
+export function browserCommand(url, platform = process.platform, env = process.env) {
   if (platform === "darwin") return { cmd: "open", args: [url] };
   // `start` is a cmd builtin; `&` in the query string must be escaped for cmd.
   if (platform === "win32") return { cmd: "cmd", args: ["/c", "start", "", url.replace(/&/g, "^&")] };
+  // WSL reports "linux" but usually has no xdg-open (or it points at nothing) — hand the URL to
+  // the Windows side. powershell.exe is always on the WSL PATH; single quotes double to escape.
+  if (platform === "linux" && isWsl(env)) {
+    return { cmd: "powershell.exe", args: ["-NoProfile", "-Command", `Start-Process '${url.replace(/'/g, "''")}'`] };
+  }
   return { cmd: "xdg-open", args: [url] };
 }
 

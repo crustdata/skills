@@ -42,7 +42,14 @@ claude plugin install crustdata@crustdata-plugin
 
 This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and Crustdata's research skills (published into `skills/` and synced per-account from the registry).
 
-**2. Sign in — once, when you're ready.** Run **`/crustdata:login`**: your browser opens for a one-time OAuth sign-in (no key to paste) and Claude confirms in one line. That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed at session start. Until you sign in, nothing nags you: Crustdata tool calls are simply gated with a one-line "run /crustdata:login" pointer. Prefer no browser? Set `CRUSTDATA_API_KEY` and the gate passes without signing in.
+**2. Sign in — once, when you're ready.** Run **`/crustdata:login`**: your browser opens for a one-time OAuth sign-in (no key to paste) and Claude confirms in one line. That single login powers **both** the MCP tools and the skill sync for your account — one shared token, silently refreshed at session start. Until you sign in, nothing nags you: Crustdata tool calls are simply gated with a one-line "run /crustdata:login" pointer. Prefer no browser? Set `CRUSTDATA_API_KEY` and the gate passes without signing in.
+
+**Platform support.** The plugin is pure Node (no shell scripts, no native deps) and works the same on **macOS, Linux, Windows, and WSL**:
+
+- Requires **Node ≥ 18** on your `PATH` (the hooks and sign-in CLI run via `node`).
+- Credentials live in `~/.crustdata/credentials.json` — permission `0600` on macOS/Linux; on Windows the file sits under your user profile (protected by your account's ACLs).
+- Sign-in opens your default browser on every OS; under **WSL** it hands the URL to Windows automatically. If no browser can open, the URL is printed to paste manually.
+- Skill sync writes only inside the plugin's own directory, on every OS.
 
 ---
 

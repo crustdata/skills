@@ -102,8 +102,30 @@ export function writeStore(store, opts = {}) {
     }
     const tmp = `${file}.${process.pid}-${randomBytes(4).toString("hex")}.tmp`;
     writeFileSync(tmp, JSON.stringify(store, null, 2) + "\n", { mode: 0o600 });
-    renameSync(tmp, file);
-    return true;
+    // Windows: a concurrent reader (headers helper + hook race at session start) or an AV scan
+    // can hold the destination and fail the rename with a TRANSIENT EPERM/EACCES/EBUSY — retry
+    // briefly instead of dropping the credentials on the floor. POSIX renames never take this path.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        renameSync(tmp, file);
+        return true;
+      } catch (err) {
+        const code = err?.code;
+        const transient = code === "EPERM" || code === "EACCES" || code === "EBUSY";
+        if (!transient || attempt >= 3) {
+          try {
+            unlinkSync(tmp);
+          } catch {
+            /* best-effort tmp cleanup */
+          }
+          throw err;
+        }
+        const until = Date.now() + 25;
+        while (Date.now() < until) {
+          /* bounded sync backoff — writeStore is synchronous by contract */
+        }
+      }
+    }
   } catch {
     return false;
   }
