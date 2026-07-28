@@ -198,7 +198,11 @@ test("planSync: a malformed entry never triggers removal of the same-slug local 
 test("writeSkillTree: every file is 0o644 — the exec bit is never honored (C6)", () => {
   const dir = tmp();
   writeSkillTree(dir, [{ path: "run.sh", data: Buffer.from("#!/bin/sh"), executable: true }]);
-  assert.equal(statSync(path.join(dir, "run.sh")).mode & 0o777, 0o644);
+  const mode = statSync(path.join(dir, "run.sh")).mode & 0o777;
+  // Windows has no POSIX exec bit (Node stats a writable file as 0o666 regardless of the
+  // mode passed) — the C6 invariant there reduces to "no exec bit leaked through".
+  if (process.platform === "win32") assert.equal(mode & 0o111, 0);
+  else assert.equal(mode, 0o644);
   rmSync(dir, { recursive: true, force: true });
 });
 
