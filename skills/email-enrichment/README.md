@@ -10,7 +10,7 @@ Turn email addresses into rich contact profiles, or find verified emails for any
 
 ## Quick start
 
-Connect the [Crustdata MCP server](https://mcp.crustdata.com/mcp), then ask:
+Connect the [Crustdata Code Mode MCP server](https://install.crustdata.com/mcp), then ask:
 
 > "Here's a CSV of 500 emails from our calendar events. Can you tell me who these people are?"
 
@@ -24,15 +24,15 @@ The skill runs a 7-phase waterfall. Each phase catches what earlier phases misse
 
 ```
 Phase 1: Identify company from email domain              (free)
-Phase 2: Direct person lookup by email                    (work, edu, and personal)
+Phase 2: Direct person lookup by business email           (work, edu)
 Phase 3: Search by name + company                         (work/edu fallback)
-Phase 4: Search by email pattern + domain verification    (all types fallback)
+Phase 4: (V2 gap — email-pattern search not available)    (covered by 3/5/6)
 Phase 5: Search by name for personal emails               (personal fallback)
 Phase 6: Web search to find profile URL                   (all types fallback)
 Phase 7: Multi-signal scoring gate                        (quality filter)
 ```
 
-Phase 2 handles all email types in a single step: work and edu emails use the `business_email` parameter, while personal emails (gmail, yahoo, outlook) use the `personal_email` parameter for direct reverse lookup.
+Phase 2 looks up work and edu emails directly via the `business_emails` identifier. Personal emails (gmail, yahoo, outlook) have no direct reverse-lookup on the v2 API, so they are resolved by name via Phases 5/6.
 
 Every match is verified. Work and edu email results are checked against employer domains. Phases 3-6 results pass through a scoring gate that requires strong name and company alignment before accepting.
 
@@ -53,33 +53,37 @@ bert.zacharin@gmail.com
 | kayla@openai.com | Kayla Wood | OpenAI | person_enrich |
 | dennis@rre.com | Dennis Cherian | RRE Ventures | person_enrich |
 | rkoning@hbs.edu | Rem Koning | Harvard Business School | person_enrich |
-| bert.zacharin@gmail.com | Albert Zacharin | Coinbase | personal_email |
+| bert.zacharin@gmail.com | Albert Zacharin | Coinbase | name_search |
 
 ## Setup
 
 ### Claude.ai or Claude Desktop
 
 1. Go to **Settings > Connectors > Add custom connector**
-2. Paste `https://mcp.crustdata.com/mcp` and click **Add** ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+2. Paste `https://install.crustdata.com/mcp` and click **Add** ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 3. Upload a CSV or paste your email list and ask Claude to enrich it
 
 ### Claude Code (CLI)
 
-1. Add the Crustdata MCP server: `claude mcp add --transport http crustdata https://mcp.crustdata.com/mcp`
+1. Add the Crustdata MCP server: `claude mcp add --transport http crustdata https://install.crustdata.com/mcp`
 2. Ask Claude to enrich your emails: `/email-enrichment my_emails.csv`
 
-## Crustdata MCP tools used
+## Crustdata tools used
+
+All tools run inside `execute({ code })` scripts via `callTool("<tool>", params)`.
 
 | Tool | What it does | Cost |
 |------|-------------|------|
-| `crustdata_company_identify` | Resolves an email domain to a company | Free |
-| `crustdata_people_enrich` | Looks up a person by work email, personal email, or profile URL | Credits |
-| `crustdata_people_search_db` | Searches 800M+ profiles by name, company, or email patterns | Credits |
-| `crustdata_web_search` | Web search fallback for hard-to-find contacts | Credits |
+| `company_identify` | Resolves an email domain to a company | Free |
+| `person_enrich` | Looks up a person by work email or profile URL, returns business/personal emails | ~1-7 cr (additive) |
+| `person_search` | Searches 800M+ profiles by name and company | ~0.03 cr/result |
+| `web_search_live` | Web search fallback for hard-to-find contacts | 1 cr/query |
+| `web_enrich_live` | Fetches page content (e.g. GitHub commit patches) | 1 cr/page |
+| `dev_platform_enrich` | GitHub/dev-platform profile lookup for technical people | +1 cr |
 
-## Rate limits
+## Scaling
 
-The skill respects Crustdata's rate limits (leaky bucket, 15-100 RPM depending on endpoint and plan). For large lists, it saves progress to a JSON file so it can resume if interrupted.
+Rate limiting is handled by the host inside `execute`. For large lists, the skill batches enrich calls (up to 25 per call) and fans out independent work in parallel, saving progress to a JSON file so it can resume if interrupted.
 
 ## Evals
 

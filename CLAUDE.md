@@ -25,7 +25,7 @@ The README is a product page, not a press release. A plumber who just started us
 - **Crustdata** is the public data layer for AI and humans — real-time B2B data via API
 - **Positioning**: AI-native alternative to Apollo, Hunter.io, Clearbit, Lusha, RocketReach, ZoomInfo, People Data Labs, Coresignal, Exa, Parallel
 - **Tone**: Community-first, open-source feel. Crustdata is the data source powering the skills, not the hero. No hard CTAs, no pricing mentions, no "sign up now" language
-- **MCP server URL**: `https://mcp.crustdata.com/mcp` — this is the only correct link. Never use `www.crustdata.com` or any other URL for the MCP server
+- **MCP server URL**: `https://install.crustdata.com/mcp` — this is the only correct link. Never use `www.crustdata.com` or any other URL for the MCP server
 
 ## Adding a new skill — full checklist
 
@@ -48,7 +48,7 @@ The skill folder name becomes the URL path (`github.com/crustdata/skills/tree/ma
 This is what the AI reads. It can contain internal implementation details (techniques, API patterns, fallback chains) that you do NOT want in the public README.
 
 - Update the `name:` field in frontmatter to match the folder name
-- Include the MCP server URL (`https://mcp.crustdata.com/mcp`) in the tool dependencies section
+- Include the MCP server URL (`https://install.crustdata.com/mcp`) in the tool dependencies section
 - **Never expose proprietary techniques in the README** — keep them in SKILL.md only. Example: GitHub commit history extraction for personal emails is documented in SKILL.md but the README just says "Crustdata's web search API with multi-source discovery"
 
 ### 3. Write the skill-level README.md
@@ -70,7 +70,7 @@ This lives inside the skill folder (e.g., `email-enrichment/README.md`). It's th
 Claude.ai (web) and Claude Desktop (macOS/Windows app) use the same connector system. The setup steps are identical — combine them under one heading: "Claude.ai (web) or Claude Desktop (macOS/Windows)".
 
 - **Never say "MCP server"** to non-technical users. They don't know what MCP means. Say "custom connector" instead
-- **Adding Crustdata**: "Go to Settings → Connectors → 'Add custom connector' → paste `https://mcp.crustdata.com/mcp` → click 'Add'". Always link the [step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp)
+- **Adding Crustdata**: "Go to Settings → Connectors → 'Add custom connector' → paste `https://install.crustdata.com/mcp` → click 'Add'". Always link the [step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp)
 - **Gmail, Google Drive, Slack, etc. are built-in connectors** — never say "add Gmail MCP". Just say "find Gmail in your Connectors list → click 'Connect'"
 - **Only Crustdata requires the custom connector flow** because it's not a pre-built integration
 - **Every step is one action.** "Go to X → click Y → paste Z → click Add." No compound steps
@@ -139,7 +139,7 @@ Include **all** current `.skill` files in each release so users can always downl
 Before pushing, verify every single one of these:
 
 - [ ] **Skill name** is consistent across: folder name, SKILL.md frontmatter `name:`, evals.json `skill_name`
-- [ ] **MCP server URL** is `https://mcp.crustdata.com/mcp` everywhere (both READMEs + SKILL.md)
+- [ ] **MCP server URL** is `https://install.crustdata.com/mcp` everywhere (both READMEs + SKILL.md)
 - [ ] **No internal techniques exposed** in READMEs (GitHub commit history, Codeforces scraping, etc. stay in SKILL.md only)
 - [ ] **Release exists** with downloadable `.skill` file before the README links to it
 - [ ] **All links work** — relative links to files that exist, external URLs that resolve

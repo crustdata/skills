@@ -7,7 +7,7 @@
       "name": "linkedin-url-never-guessed",
       "category": "linkedin_verification",
       "prompt": "Find ML engineers at Princeton who work on NLP. I need their LinkedIn profiles. Here are some names I found from papers: David Park (Princeton grad, now at a startup), Vincent Chen (MIT grad, now at a startup), Abhay Gupta (CMU grad).",
-      "expected_output": "LinkedIn URLs should be fetched from Crustdata people_search_db or web_search — never constructed from name patterns like 'david-park-princeton' or 'vincent-chen-mit'. The URLs returned should contain auto-generated slugs (e.g., 'david-park-086833264', 'vincent-chen-662a031b5', 'gupta-abhay').",
+      "expected_output": "LinkedIn URLs should be fetched from Crustdata person_search or web_search_live — never constructed from name patterns like 'david-park-princeton' or 'vincent-chen-mit'. The URLs returned should contain auto-generated slugs (e.g., 'david-park-086833264', 'vincent-chen-662a031b5', 'gupta-abhay').",
       "assertions": [
         {
           "text": "No LinkedIn URL contains a school name as suffix (e.g., '-princeton', '-mit', '-cmu')",
@@ -15,9 +15,9 @@
           "pattern": "linkedin\\.com/in/[a-z-]+(princeton|mit|cmu|stanford|berkeley|harvard|yale)"
         },
         {
-          "text": "All LinkedIn URLs were fetched via crustdata_people_search_db or crustdata_web_search, not constructed",
+          "text": "All LinkedIn URLs were fetched via person_search or web_search_live (callTool inside execute), not constructed",
           "type": "tool_usage",
-          "required_tools": ["crustdata_people_search_db"]
+          "required_tools": ["person_search"]
         },
         {
           "text": "All LinkedIn URLs use the full https://www.linkedin.com/in/ prefix",
@@ -32,7 +32,7 @@
       "name": "linkedin-slug-mismatch-detection",
       "category": "linkedin_verification",
       "prompt": "I have a candidate list with LinkedIn URLs. Can you verify these are correct? Benoit Rostykus (Nuro, autonomous vehicles) — linkedin.com/in/benoit-rostykus. Hongjun Choi (researcher) — linkedin.com/in/hongjun-choi. Benedict Arockiaraj (Google) — linkedin.com/in/benedict-arockiaraj.",
-      "expected_output": "Each URL should be verified against Crustdata's people_search_db. The correct slugs are: benoitrostykus (not benoit-rostykus), hongjunchoi92 (not hongjun-choi), benedictflorance (not benedict-arockiaraj). All three should be flagged as mismatches and corrected.",
+      "expected_output": "Each URL should be verified against Crustdata's person_search. The correct slugs are: benoitrostykus (not benoit-rostykus), hongjunchoi92 (not hongjun-choi), benedictflorance (not benedict-arockiaraj). All three should be flagged as mismatches and corrected.",
       "assertions": [
         {
           "text": "Benoit Rostykus slug corrected to 'benoitrostykus'",
@@ -72,7 +72,7 @@
         {
           "text": "Company name variations were tried when initial search failed",
           "type": "tool_usage_count",
-          "tool": "crustdata_people_search_db",
+          "tool": "person_search",
           "min_calls": 2,
           "description": "At least one retry with different company name or name variation"
         }
@@ -210,18 +210,18 @@
       "name": "waterfall-fallback-on-db-miss",
       "category": "linkedin_verification",
       "prompt": "Find the LinkedIn profile for Aakash Kumar Nain who works at Ola (the Indian ride-hailing company) as a deep learning engineer.",
-      "expected_output": "crustdata_people_search_db should be tried first with 'Aakash Kumar Nain' + 'Ola'. If that returns 0 results, crustdata_web_search should be used as fallback with 'Aakash Kumar Nain Ola deep learning site:linkedin.com'. If web search also fails, the candidate should be marked as 'LinkedIn URL unverified' — NOT given a guessed URL.",
+      "expected_output": "person_search should be tried first with 'Aakash Kumar Nain' + 'Ola'. If that returns 0 results, web_search_live should be used as fallback with 'Aakash Kumar Nain Ola deep learning site:linkedin.com'. If web search also fails, the candidate should be marked as 'LinkedIn URL unverified' — NOT given a guessed URL.",
       "assertions": [
         {
-          "text": "people_search_db was tried first",
+          "text": "person_search was tried first",
           "type": "tool_usage_order",
-          "first": "crustdata_people_search_db",
-          "then": "crustdata_web_search"
+          "first": "person_search",
+          "then": "web_search_live"
         },
         {
           "text": "Web search fallback was attempted after DB returned 0 results",
           "type": "tool_usage",
-          "required_tools": ["crustdata_web_search"]
+          "required_tools": ["web_search_live"]
         },
         {
           "text": "If both fail, candidate is NOT given a fabricated LinkedIn URL",
@@ -235,21 +235,21 @@
       "id": 10,
       "name": "large-api-response-handling",
       "category": "technical_robustness",
-      "prompt": "Enrich these 25 LinkedIn URLs with business emails using Crustdata people_enrich. [List of 25 URLs]",
-      "expected_output": "When the API response exceeds token limits and gets saved to a file, the skill should use Python to parse the saved file and extract the needed data, rather than failing or trying to read it inline.",
+      "prompt": "Enrich these 25 LinkedIn URLs with business emails using Crustdata person_enrich. [List of 25 URLs]",
+      "expected_output": "The enrichment should run inside one execute script that calls person_enrich with professional_network_profile_urls (array, batched with chunk(urls, 25)) and fields: ['basic_profile', 'contact'], then returns only a slim projection (name + business email) rather than the raw payload.",
       "assertions": [
         {
-          "text": "Large responses are parsed with Python (json.load + navigation to extract fields)",
+          "text": "Large responses are reduced in-script (project/pick/map) before returning, not dumped raw",
           "type": "semantic",
-          "description": "When response is saved to file due to token limits, Python is used to parse it"
+          "description": "Only the needed fields (name, business email) are returned from the execute script"
         },
         {
-          "text": "Parsing handles the nested structure: json.loads(data[0]['text']) to get inner content",
+          "text": "Business emails are read from the v2 response path person_data.contact.business_emails[].email",
           "type": "semantic",
-          "description": "The saved file format is a JSON array where [0]['text'] contains the actual payload as a string"
+          "description": "Extraction navigates matches[].person_data.contact.business_emails, not a flat v1 field"
         }
       ],
-      "failure_story": "Crustdata API responses for batch enrichment of 25 profiles frequently exceeded token limits and got saved to files. The saved files have a nested structure — a JSON array where item[0]['text'] is a JSON string containing the actual profiles. Without knowing this structure, extraction fails silently."
+      "failure_story": "In Code Mode, only what the execute script returns reaches the model. Returning the raw 25-profile payload wastes the context window and can truncate. The fix: project to just name + business email (person_data.contact.business_emails[].email) inside the script before returning."
     },
     {
       "id": 11,
@@ -276,12 +276,12 @@
       "name": "batch-parallel-efficiency",
       "category": "technical_robustness",
       "prompt": "Find and verify LinkedIn URLs for these 12 candidates: [list of 12 names with companies].",
-      "expected_output": "LinkedIn verification should be done in batches of 5-6 parallel crustdata_people_search_db calls, not one at a time. Fallback web searches should also be batched for any that failed.",
+      "expected_output": "LinkedIn verification should fan out person_search lookups with parallelMap inside one execute script, not one at a time. Fallback web searches (web_search_live) should also be batched for any that failed.",
       "assertions": [
         {
-          "text": "Multiple people_search_db calls are made in parallel (batches of 5-6)",
+          "text": "Multiple person_search calls are run concurrently via parallelMap (not sequential)",
           "type": "semantic",
-          "description": "Verification calls should be batched for efficiency, not sequential"
+          "description": "Verification calls should be fanned out for efficiency, not sequential"
         },
         {
           "text": "Failed lookups are collected and web_search fallbacks are also batched",
@@ -289,14 +289,14 @@
           "description": "Web search fallbacks for DB misses should be grouped and run together"
         }
       ],
-      "failure_story": "Processing 91 candidates one at a time would take hours. The working pattern was batches of 5-6 parallel people_search_db calls, then collecting failures and running web_search fallbacks in a second parallel batch."
+      "failure_story": "Processing 91 candidates one at a time would take hours. The working pattern was fanning out person_search calls with parallelMap, then collecting failures and running web_search_live fallbacks in a second parallel pass."
     },
     {
       "id": 13,
       "name": "founder-exclusion-with-shrinking-check",
       "category": "pipeline_correctness",
       "prompt": "Source ML engineers for a Founding ML Engineer role at our startup (AI-native data infrastructure, Series A, SF-based). My name is Alex, CTO. Here are some candidates I found from papers and repos: 1) Di Jin, Co-founder at Eigen AI — published several NLP papers at MIT. 2) Sai Surbehera, Co-founder & CTO at Lapis Labs (YC F23) — built vector search infrastructure. 3) Aayush Anand, Co-founder at Level.game — built real-time ML pipelines. 4) Rajat Arya, VP Engineering at XetHub (acquired by HuggingFace) — built model storage layer. Find their LinkedIn profiles, check if we should reach out, and draft emails for the ones we should contact.",
-      "expected_output": "Di Jin, Sai Surbehera, and Aayush Anand should be flagged as current founders. The skill should check whether their companies are shrinking (using crustdata_company_enrich) before deciding to skip them. Rajat Arya is not a founder and should proceed through the normal pipeline. The tracker should show 'skipped' status for founders whose companies are not shrinking.",
+      "expected_output": "Di Jin, Sai Surbehera, and Aayush Anand should be flagged as current founders. The skill should check whether their companies are shrinking (using company_enrich with fields ['basic_info', 'headcount']) before deciding to skip them. Rajat Arya is not a founder and should proceed through the normal pipeline. The tracker should show 'skipped' status for founders whose companies are not shrinking.",
       "assertions": [
         {
           "text": "Identifies Di Jin, Sai Surbehera, and Aayush Anand as current founders based on their titles",
@@ -304,9 +304,9 @@
           "description": "All three founder/co-founder candidates are flagged before outreach proceeds"
         },
         {
-          "text": "Uses crustdata_company_enrich to check company health signals for founder companies",
+          "text": "Uses company_enrich to check company health signals for founder companies",
           "type": "tool_usage",
-          "required_tools": ["crustdata_company_enrich"]
+          "required_tools": ["company_enrich"]
         },
         {
           "text": "Rajat Arya (VP Engineering, not a founder) proceeds through the normal pipeline without founder exclusion checks",
@@ -324,20 +324,20 @@
           "description": "Gmail drafts should only be created for non-founder candidates (and founders at visibly failing companies)"
         }
       ],
-      "failure_story": "In a real campaign, 3 active founders (Di Jin at Eigen AI, Sai Surbehera at Lapis Labs, Aayush Anand at Level.game) were included in outreach drafts. All their companies were active — reaching out wasted slots and felt tone-deaf. The fix: check titles for founder/CEO/CTO, verify company health via crustdata_company_enrich, and skip unless all three shrinking signals are present."
+      "failure_story": "In a real campaign, 3 active founders (Di Jin at Eigen AI, Sai Surbehera at Lapis Labs, Aayush Anand at Level.game) were included in outreach drafts. All their companies were active — reaching out wasted slots and felt tone-deaf. The fix: check titles for founder/CEO/CTO, verify company health via company_enrich, and skip unless all three shrinking signals are present."
     },
     {
       "id": 14,
       "name": "personal-email-enrichment-via-crustdata",
       "category": "email_enrichment",
       "prompt": "Find personal email addresses for these candidates using Crustdata enrichment. I already have their verified LinkedIn URLs: 1) Rajat Arya — https://www.linkedin.com/in/rajatarya (Team Lead at Hugging Face). 2) Anurag Sahu — https://www.linkedin.com/in/anurag-sahu-mle (Staff ML Engineer at Zscaler). Try Crustdata's personal email enrichment first before falling back to GitHub.",
-      "expected_output": "Should use crustdata_people_enrich with fields including 'personal_contact_info.personal_emails' to request personal emails. Should try this BEFORE falling back to GitHub commit extraction. The enrichment call should include the LinkedIn URLs. If personal emails are returned, they should be non-noreply addresses. If not returned, should fall through to GitHub commit extraction (Phase 3C).",
+      "expected_output": "Should use person_contact_enrich with the dotted 'contact.personal_emails' field to request personal emails (preferred for contact-only needs — it skips person_enrich's base-profile charge). Should try this BEFORE falling back to GitHub commit extraction. The enrichment call should pass the LinkedIn URLs in professional_network_profile_urls. If personal emails are returned, they should be non-noreply addresses. If not returned, should fall through to GitHub commit extraction (Phase 3C).",
       "assertions": [
         {
-          "text": "Uses crustdata_people_enrich with personal_contact_info.personal_emails in the fields parameter",
+          "text": "Uses person_contact_enrich with the dotted 'contact.personal_emails' field (via callTool inside execute)",
           "type": "tool_usage",
-          "required_tools": ["crustdata_people_enrich"],
-          "description": "The enrichment call must include 'personal_contact_info.personal_emails' in the fields parameter"
+          "required_tools": ["person_contact_enrich"],
+          "description": "The enrichment call must include 'contact.personal_emails' in the dotted fields array (person_contact_enrich is preferred for contact-only needs — cheaper than person_enrich, which adds a base-profile charge)"
         },
         {
           "text": "Personal email enrichment is attempted BEFORE GitHub commit extraction",
@@ -345,17 +345,17 @@
           "description": "Crustdata personal email (Phase 3B) should be tried before GitHub commits (Phase 3C)"
         },
         {
-          "text": "Can combine business_email and personal_contact_info.personal_emails in a single enrichment call",
+          "text": "person_contact_enrich returns personal email and phone together via dotted contact.* tiers",
           "type": "semantic",
-          "description": "The skill should know it can request both business and personal emails in one API call to save round-trips"
+          "description": "The skill should know person_contact_enrich yields personal email + phone (and business) in one call and is cheaper for contact-only needs, since person_enrich's contact group can return the same tiers but adds a base-profile charge"
         },
         {
           "text": "Falls back to GitHub commit extraction if personal email enrichment returns nothing",
           "type": "semantic",
-          "description": "When personal_contact_info.personal_emails is empty or null, the skill should proceed to Phase 3C (GitHub)"
+          "description": "When person_data.contact.personal_emails is empty or null, the skill should proceed to Phase 3C (GitHub)"
         }
       ],
-      "failure_story": "Before this feature existed, the only way to get personal emails was GitHub commit extraction — slow, unreliable for non-engineers, and rate-limited. Crustdata's personal_contact_info.personal_emails field returns personal emails directly from the enrichment API, making it faster and more reliable. The key: always try this before falling back to GitHub."
+      "failure_story": "Before this feature existed, the only way to get personal emails was GitHub commit extraction — slow, unreliable for non-engineers, and rate-limited. Crustdata's person_contact_enrich tool returns personal emails (person_data.contact.personal_emails) directly from the enrichment API, making it faster and more reliable. The key: always try this before falling back to GitHub."
     }
   ]
 }

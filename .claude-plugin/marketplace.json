@@ -1,6 +1,6 @@
 {
   "name": "crustdata-plugin",
-  "description": "Crustdata's official Claude plugin — MCP access to 800M+ profiles and 200M+ companies, plus Crustdata research skills.",
+  "description": "Crustdata's official Claude plugin — MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills.",
   "owner": {
     "name": "Crustdata",
     "email": "support@crustdata.co"
@@ -9,7 +9,7 @@
     {
       "name": "crustdata",
       "source": "./",
-      "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus Crustdata research skills."
+      "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills."
     }
   ]
 }

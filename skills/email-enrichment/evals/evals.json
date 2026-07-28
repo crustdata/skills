@@ -7,9 +7,9 @@
       "expected_output": "A table listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from GitHub commit history or web search fallbacks). Technical people should have GitHub-sourced personal emails where possible. Source attribution for each email found.",
       "files": [],
       "expectations": [
-        "Calls crustdata_people_enrich with fields including business_email",
-        "Batches all profile URLs into a single crustdata_people_enrich call (not one per person)",
-        "Searches for GitHub profiles for people identified as technical (Kaushik, Eric, Honglei)",
+        "Calls person_enrich (via execute/callTool) with professional_network_profile_urls and the contact field group to get business emails",
+        "Batches all profile URLs into a single person_enrich call (not one per person)",
+        "Searches for GitHub profiles for people identified as technical (Kaushik, Eric, Honglei) via dev_platform_enrich or web_search_live",
         "Verifies GitHub profile identity before extracting commit emails",
         "Does not search GitHub for non-technical people (Topher as VC)",
         "Presents results in a clear table with source attribution for each email found"
@@ -21,8 +21,8 @@
       "expected_output": "Resolves profiles for all 4 people using Crustdata people search (since no profile URLs provided), then enriches with business emails. Reports which people were found and which could not be resolved.",
       "files": [],
       "expectations": [
-        "Uses crustdata_people_search_db to resolve profiles from names and companies",
-        "Falls back to crustdata_web_search for people not found in the people database",
+        "Uses person_search (via execute/callTool) to resolve profiles from names and companies",
+        "Falls back to web_search_live for people not found in the people database",
         "Includes company context in searches to disambiguate common names",
         "Proceeds to business email enrichment after resolving profile URLs",
         "Reports which people could not be resolved and why"
@@ -34,25 +34,25 @@
       "expected_output": "Finds personal emails for all 3 technical people via GitHub commit history extraction. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search when GitHub doesn't yield results.",
       "files": [],
       "expectations": [
-        "Searches for GitHub profiles for all 3 people (all are technical)",
-        "Finds oldest non-fork repositories for GitHub commit email extraction",
+        "Searches for GitHub profiles for all 3 people (all are technical) via dev_platform_enrich or web_search_live",
+        "Finds oldest non-fork repositories for GitHub commit email extraction via web_enrich_live",
         "Validates extracted emails are not noreply/generated addresses",
-        "Falls back to web search when GitHub doesn't yield a personal email",
+        "Falls back to web_search_live when GitHub doesn't yield a personal email",
         "Clearly indicates which emails are personal vs business in the output"
       ]
     },
     {
       "id": 4,
       "prompt": "Here are 10 email addresses. Can you identify who these people are?\n\nemail\nkayla@openai.com\nvivek@pioneersquarelabs.com\ncarole@carolewainaina.com\ntalling@lamppostgroup.com\nkyle@backswingventures.com\nrkoning@hbs.edu\nbert.zacharin@gmail.com\njoanne.bradford@gmail.com\neric.grigorian@gmail.com\njashojit@gmail.com",
-      "expected_output": "All 10 emails enriched with person name, company, and profile URL. Work emails use business_email, personal emails use personal_email parameter. Results are domain-verified for work/edu. Coverage should be high across all email types.",
+      "expected_output": "All 10 emails enriched with person name, company, and profile URL. Work emails use the business_emails identifier; personal emails are resolved by name via the search/web fallbacks (no direct personal-email lookup on v2). Results are domain-verified for work/edu. Coverage should be high across all email types.",
       "files": [],
       "expectations": [
-        "Phase 1: identifies companies for work/edu domains (openai.com, pioneersquarelabs.com, lamppostgroup.com, backswingventures.com, hbs.edu)",
-        "Phase 2 work: uses crustdata_people_enrich with business_email for work/edu emails",
-        "Phase 2 personal: uses crustdata_people_enrich with personal_email for gmail addresses",
+        "Phase 1: identifies companies for work/edu domains (openai.com, pioneersquarelabs.com, lamppostgroup.com, backswingventures.com, hbs.edu) via company_identify with a domains array",
+        "Phase 2 work: uses person_enrich with the business_emails identifier for work/edu emails",
+        "Phase 2 personal (V2 gap): no direct personal-email reverse lookup exists; gmail addresses are resolved by name via Phases 5/6 instead",
         "Phase 2 post-verification: checks employer domain match for work/edu results",
-        "Phase 2 AI correction: for talling@lamppostgroup.com, detects name mismatch and uses web search AI to find Ted Alling",
-        "Phase 6: catches vivek@pioneersquarelabs.com and carole@carolewainaina.com via web search",
+        "Phase 2 AI correction: for talling@lamppostgroup.com, detects name mismatch and uses web_search_live with sources ai to find Ted Alling",
+        "Phase 6: catches vivek@pioneersquarelabs.com and carole@carolewainaina.com via web_search_live",
         "Phase 7: does NOT accept false positives - requires name_sim > 0.8",
         "bert.zacharin@gmail.com resolves to Albert Zacharin (not Zacharie Bere)",
         "joanne.bradford@gmail.com resolves to Joanne Bradford (not Julie Day)",

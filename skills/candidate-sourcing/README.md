@@ -8,7 +8,7 @@ Give it a role description and it handles the entire pipeline:
 
 1. **Finds candidates** matching your specific criteria via Crustdata's 1B+ person database and web search
 2. **Verifies LinkedIn profiles** — never guesses URLs, always confirms through Crustdata (guessed URLs caused 12 errors in a real 91-person campaign)
-3. **Finds email addresses** — business emails via Crustdata enrichment API, personal emails via Crustdata web search
+3. **Finds email addresses** — business emails via Crustdata `person_enrich` and personal emails + phone via Crustdata `person_contact_enrich` (cheaper for contact-only lookups), with Crustdata web search as fallback
 4. **Writes personalized outreach** — each email references the candidate's specific work (papers, repos, projects), not generic job-title flattery
 5. **Creates Gmail drafts** — ready for you to review and click send
 
@@ -51,20 +51,20 @@ The skill runs 5 phases in sequence:
 
 1. **Define & search** — extracts role criteria, searches Crustdata people database + arXiv/GitHub/web for candidates matching your specific technical problems
 2. **Verify LinkedIn** — waterfall lookup: Crustdata people DB → Crustdata web search → mark unverified. Never fabricates URLs
-3. **Find emails** — Crustdata people enrichment (batch 25 at a time) for business emails, Crustdata web search for personal emails
+3. **Find emails** — Crustdata `person_enrich` for business emails and `person_contact_enrich` for personal emails (batch 25 at a time), Crustdata web search as fallback
 4. **Write outreach** — personalized openers based on each candidate's proof of work (papers, repos, projects), not job titles
 5. **Create Gmail drafts + tracker** — drafts in your Gmail, CSV tracker logging every candidate and their status
 
 ## Setup
 
 **Claude.ai (web) or Claude Desktop (macOS/Windows):**
-1. Go to Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+1. Go to Settings → Connectors → "Add custom connector" → paste `https://install.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 2. Find Gmail in your Connectors list → click "Connect"
 3. Download the [`.skill` file](https://github.com/crustdata/skills/releases) and upload it to your project
 4. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."
 
 **Claude Code (CLI):**
-1. Add the [Crustdata MCP server](https://mcp.crustdata.com/mcp) and Gmail MCP server to your config
+1. Add the [Crustdata MCP server](https://install.crustdata.com/mcp) and Gmail MCP server to your config
 2. Import this skill directory into your workspace
 3. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."
 
