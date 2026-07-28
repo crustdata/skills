@@ -2,9 +2,9 @@
  * Shared local credential store for the Crustdata Claude Code plugin.
  *
  * One JSON file — `${CRUSTDATA_CONFIG_DIR:-$HOME/.crustdata}/credentials.json`,
- * mode 0600 — written by the login CLI (`bin/crustdata-login.mjs`) and read by
+ * mode 0600 — written by the login CLI (`scripts/crustdata-login.mjs`) and read by
  * BOTH consumers of the token:
- *   - the MCP server headers helper (`bin/crustdata-headers.mjs`)
+ *   - the MCP server headers helper (`scripts/crustdata-headers.mjs`)
  *   - the SessionStart skill-sync hook (`hooks/skills-sync.mjs`)
  *
  * Shape (extra fields are preserved on refresh):

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-auth.mjs\" refresh",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/crustdata-auth.mjs\" refresh",
             "timeout": 15
           },
           {
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/crustdata-auth.mjs\" check",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/crustdata-auth.mjs\" check",
             "timeout": 10
           }
         ]

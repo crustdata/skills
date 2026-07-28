@@ -3,7 +3,7 @@ description: Sign in to Crustdata — browser OAuth; one login for the MCP tools
 disable-model-invocation: true
 ---
 
-!`node "${CLAUDE_PLUGIN_ROOT}/bin/crustdata-auth.mjs" login`
+!`node "${CLAUDE_PLUGIN_ROOT}/scripts/crustdata-auth.mjs" login`
 
 The line above is the result of the sign-in that just ran (the browser handled it — you did
 not run it). Relay it to the user in exactly ONE short line: on success confirm they're

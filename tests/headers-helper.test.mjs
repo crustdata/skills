@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { writeStore } from "../hooks/lib/credential-store.mjs";
 
-const HELPER = fileURLToPath(new URL("../bin/crustdata-headers.mjs", import.meta.url));
+const HELPER = fileURLToPath(new URL("../scripts/crustdata-headers.mjs", import.meta.url));
 
 /** Run the helper as Claude Code would, against an isolated credential store. */
 function runHelper(dir, extraEnv = {}) {
@@ -39,7 +39,7 @@ test("headersHelper: no credentials → {} on stdout, login hint on stderr, exit
     const res = runHelper(dir);
     assert.equal(res.status, 0);
     assert.deepEqual(JSON.parse(res.stdout), {});
-    assert.match(res.stderr, /crustdata-login\.mjs/);
+    assert.match(res.stderr, /\/crustdata:login/);
     assert.doesNotMatch(res.stdout, /Bearer/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
