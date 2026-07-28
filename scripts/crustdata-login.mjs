@@ -306,11 +306,18 @@ function startLoopback(expectedState, { expectedIssuer, requireIss = false } = {
       resolveStart({
         redirectUri: `http://127.0.0.1:${port}${CALLBACK_PATH}`,
         waitForCode: () =>
-          outcome.finally(() => {
-            clearTimeout(timer);
-            server.close();
-            server.closeAllConnections?.();
-          }),
+          outcome.finally(
+            () =>
+              // Wait for the server to FINISH closing: exiting the process while its
+              // handles are mid-close trips a libuv assert on Windows (Node 24,
+              // src/win/async.c). Bounded so a lingering connection can't stall login.
+              new Promise((done) => {
+                clearTimeout(timer);
+                server.close(() => done());
+                server.closeAllConnections?.();
+                setTimeout(done, 1000).unref();
+              }),
+          ),
       });
     });
   });
@@ -436,5 +443,10 @@ if (invokedAs !== "" && fileURLToPath(import.meta.url) === invokedAs) {
   } catch (err) {
     logLine(`login failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  process.exit(exitCode);
+  // Let the loop drain instead of process.exit(): a hard exit races libuv's teardown
+  // of the just-closed loopback server on Windows (Node 24 aborts in src/win/async.c
+  // after a fully successful sign-in). The unref'd timer is a backstop in case some
+  // handle unexpectedly keeps the loop alive.
+  process.exitCode = exitCode;
+  setTimeout(() => process.exit(exitCode), 3000).unref();
 }
