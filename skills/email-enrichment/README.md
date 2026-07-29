@@ -20,21 +20,20 @@ or:
 
 ## How email-to-person enrichment works
 
-The skill runs a 7-phase waterfall. Each phase catches what earlier phases missed:
+The skill runs a six-phase waterfall. Each phase catches what earlier phases missed:
 
 ```
 Phase 1: Identify company from email domain              (free)
-Phase 2: Direct person lookup by business email           (work, edu)
+Phase 2: Direct person lookup by email                    (work/edu sync, personal async)
 Phase 3: Search by name + company                         (work/edu fallback)
-Phase 4: (V2 gap — email-pattern search not available)    (covered by 3/5/6)
-Phase 5: Search by name for personal emails               (personal fallback)
-Phase 6: Web search to find profile URL                   (all types fallback)
-Phase 7: Multi-signal scoring gate                        (quality filter)
+Phase 4: Search by name for personal emails               (personal fallback)
+Phase 5: Web search to find profile URL                   (all types fallback)
+Phase 6: Multi-signal scoring gate                        (quality filter)
 ```
 
-Phase 2 looks up work and edu emails directly via the `business_emails` identifier. Personal emails (gmail, yahoo, outlook) have no direct reverse-lookup on the v2 API, so they are resolved by name via Phases 5/6.
+Phase 2 looks up work and edu emails directly via the `business_emails` identifier, and personal emails (gmail, yahoo, outlook) through an async batch identify job; anything still unmatched is resolved by name via Phases 4/5.
 
-Every match is verified. Work and edu email results are checked against employer domains. Phases 3-6 results pass through a scoring gate that requires strong name and company alignment before accepting.
+Every match is verified. Work and edu email results are checked against employer domains. Phases 3-5 results pass through a scoring gate that requires strong name and company alignment before accepting.
 
 ## Example
 
@@ -87,6 +86,6 @@ Rate limiting is handled by the host inside `execute`. For large lists, the skil
 
 ## Evals
 
-Test cases in [`evals/evals.json`](./evals/evals.json) cover both directions: email-to-person (7-phase waterfall with work, edu, and personal emails) and person-to-email (profile resolution and business email enrichment).
+Test cases in [`evals/evals.json`](./evals/evals.json) cover both directions: email-to-person (six-phase waterfall with work, edu, and personal emails) and person-to-email (profile resolution and business email enrichment).
 
 See [SKILL.md](./SKILL.md) for the full technical methodology.

@@ -44,15 +44,15 @@
     {
       "id": 4,
       "prompt": "Here are 10 email addresses. Can you identify who these people are?\n\nemail\nkayla@openai.com\nvivek@pioneersquarelabs.com\ncarole@carolewainaina.com\ntalling@lamppostgroup.com\nkyle@backswingventures.com\nrkoning@hbs.edu\nbert.zacharin@gmail.com\njoanne.bradford@gmail.com\neric.grigorian@gmail.com\njashojit@gmail.com",
-      "expected_output": "All 10 emails enriched with person name, company, and profile URL. Work emails use the business_emails identifier; personal emails are resolved by name via the search/web fallbacks (no direct personal-email lookup on v2). Results are domain-verified for work/edu. Coverage should be high across all email types.",
+      "expected_output": "All 10 emails enriched with person name, company, and profile URL. Work emails use the business_emails identifier; personal emails go through the async batch identify, with the name-based search/web fallbacks for any it misses. Results are domain-verified for work/edu. Coverage should be high across all email types.",
       "files": [],
       "expectations": [
         "Phase 1: identifies companies for work/edu domains (openai.com, pioneersquarelabs.com, lamppostgroup.com, backswingventures.com, hbs.edu) via company_identify with a domains array",
         "Phase 2 work: uses person_enrich with the business_emails identifier for work/edu emails",
-        "Phase 2 personal (V2 gap): no direct personal-email reverse lookup exists; gmail addresses are resolved by name via Phases 5/6 instead",
+        "Phase 2 personal: batch identify resolves gmail addresses asynchronously; any it misses fall back to the name-based Phases 4/5",
         "Phase 2 post-verification: checks employer domain match for work/edu results",
         "Phase 2 AI correction: for talling@lamppostgroup.com, detects name mismatch and uses web_search_live with sources ai to find Ted Alling",
-        "Phase 6: catches vivek@pioneersquarelabs.com and carole@carolewainaina.com via web_search_live",
+        "Phase 5: catches vivek@pioneersquarelabs.com and carole@carolewainaina.com via web_search_live",
         "Phase 7: does NOT accept false positives - requires name_sim > 0.8",
         "bert.zacharin@gmail.com resolves to Albert Zacharin (not Zacharie Bere)",
         "joanne.bradford@gmail.com resolves to Joanne Bradford (not Julie Day)",

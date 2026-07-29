@@ -244,9 +244,9 @@
           "description": "Only the needed fields (name, business email) are returned from the execute script"
         },
         {
-          "text": "Business emails are read from the v2 response path person_data.contact.business_emails[].email",
+          "text": "Business emails are read from the response path person_data.contact.business_emails[].email",
           "type": "semantic",
-          "description": "Extraction navigates matches[].person_data.contact.business_emails, not a flat v1 field"
+          "description": "Extraction navigates matches[].person_data.contact.business_emails on each result row"
         }
       ],
       "failure_story": "In Code Mode, only what the execute script returns reaches the model. Returning the raw 25-profile payload wastes the context window and can truncate. The fix: project to just name + business email (person_data.contact.business_emails[].email) inside the script before returning."

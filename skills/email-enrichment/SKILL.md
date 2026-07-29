@@ -2,9 +2,9 @@
 name: email-enrichment
 description: >
   Enrich a list of email addresses to find the person behind each one (email to person profile).
-  Uses a 7-phase waterfall over the Crustdata Code Mode MCP, calling these tools inside execute()
-  scripts: company_identify, person_enrich (business_emails) / person_enrich_live, person_search
-  (three different filter strategies), web_search_live, web_enrich_live.
+  Uses a six-phase waterfall over the Crustdata Code Mode MCP, calling these tools inside execute()
+  scripts: company_identify, person_enrich (business_emails) / batch_person_identify, person_search
+  (name+company and name-only strategies), web_search_live, web_enrich_live.
   Handles verification, progress saving, and resume.
   Trigger on: "enrich these emails", "who are these people", "find info for these email addresses",
   "look up these contacts", "identify people from emails", "reverse email lookup", "email to profile",
@@ -15,14 +15,14 @@ description: >
 
 Two directions, one skill:
 
-1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a 7-phase waterfall optimized for coverage and accuracy.
+1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a six-phase waterfall optimized for coverage and accuracy.
 2. **Person to email** - Find business emails, personal emails, and phone numbers for a list of people. Uses enrichment with personal contact info, plus GitHub commit fallbacks for technical people.
 
 ---
 
 ## Overview
 
-The approach uses seven phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
+The approach uses six phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
 
 All Crustdata work runs inside `execute({ code })` scripts — write a short TypeScript script whose only I/O is `const r = await callTool("<tool>", params)`, then branch on `r.ok`. See the per-phase scripts below.
 
@@ -30,12 +30,11 @@ All Crustdata work runs inside `execute({ code })` scripts — write a short Typ
 |-------|----------|---------|------|
 | 1 | `company_identify` | Work + Edu emails | FREE |
 | 2 | `person_enrich` (`business_emails`) + post-verification | Work + Edu | ~1-2 cr/profile |
-| 2 (personal) | reverse personal-email lookup — **V2 GAP**, prose only | Personal | see note |
+| 2 (personal) | `batch_person_identify` (async) | Personal | 1 cr/matched |
 | 3 | `person_search` (name+company) | Missed work/edu | ~0.03 cr/result |
-| 4 | `emails`-contains search — **V2 GAP**, prose only | ALL remaining | see note |
-| 5 | `person_search` (name only) | Remaining personal | ~0.03 cr/result |
-| 6 | `web_search_live` + `person_enrich` | ALL remaining | 1 cr/query + enrich |
-| 7 | Scoring gate | ALL candidates from Phases 3-6 | N/A |
+| 4 | `person_search` (name only) | Remaining personal | ~0.03 cr/result |
+| 5 | `web_search_live` + `person_enrich` | ALL remaining | 1 cr/query + enrich |
+| 6 | Scoring gate | ALL candidates from Phases 3-5 | N/A |
 
 **Coverage rates:**
 
@@ -141,7 +140,7 @@ Store the result in a domain_map: `domain -> { name, ... }`. This `domainMap` is
 Look up each work/edu email directly using person enrichment. Phase 2 branches based on email type:
 
 - **Work/edu emails** -> use the `business_emails` identifier + post-verification (Branch A below)
-- **Personal emails** -> see Branch B — this is a V2 GAP; personal emails skip to Phases 5/6
+- **Personal emails** -> see Branch B — the async `batch_person_identify` path, with the name-based phases as fallback
 
 ### Branch A: Work/edu emails (business_emails)
 
@@ -180,21 +179,20 @@ If a match is returned (`matches[0].person_data` has a name), it MUST pass post-
 
 ### Branch B: Personal emails (reverse personal-email lookup)
 
-> **V2 PATH — async only:** The v1 `personal_email` enrich parameter (reverse email→person lookup
-> keyed on a personal email such as gmail/yahoo/outlook) has no SYNC equivalent on the v2 surface:
-> `person_enrich` only accepts `professional_network_profile_urls` or `business_emails` as
-> identifiers, `person_enrich_live` accepts only profile URLs, and there is no `emails` filter
-> column on `person_search` (see Phase 4 GAP). The direct path is the ASYNC
-> `batch_person_identify` — the only v2 tool that matches personal emails.
+> **Async only:** Personal emails (gmail/yahoo/outlook) resolve through the ASYNC
+> `batch_person_identify` — the only tool that matches personal emails. The sync tools cannot:
+> `person_enrich` accepts only `professional_network_profile_urls` or `business_emails` as
+> identifiers, `person_enrich_live` accepts only profile URLs, and `person_search` has no
+> `emails` filter column.
 >
-> **Port:** submit `batch_person_identify({ emails: [...] })` (≤300 per job), poll
+> **How:** submit `batch_person_identify({ emails: [...] })` (≤300 per job), poll
 > `batch_job_get(batch_id)` until `completed`, then read the `batch_results` rows —
 > `matches[0].person_data` carries the same ids/basic_profile/profile-URL shape as Branch A.
 > 1 credit per MATCHED identifier; unmatched identifiers are free. For emails it does not match,
 > fall through to:
-> 1. **Phase 5** — `person_search` by the full name extracted from the email prefix (works when
+> 1. **Phase 4** — `person_search` by the full name extracted from the email prefix (works when
 >    the prefix is a clear `first.last` pattern), then `person_enrich` by the resulting profile URL.
-> 2. **Phase 6** — `web_search_live({ query: "who is EMAIL", sources: ["ai"] })` to resolve the
+> 2. **Phase 5** — `web_search_live({ query: "who is EMAIL", sources: ["ai"] })` to resolve the
 >    owner's name, then `person_search` → `person_enrich`.
 
 ### Post-verification (required for every Phase 2 Branch A result -- work/edu only)
@@ -256,7 +254,7 @@ This step recovered 7 correct matches in testing that would otherwise have been 
 ### Expected results
 
 - **Work/edu (Branch A):** ~58% of work+edu emails pass all verification checks. ~5% are rejected by employer domain check (wrong person entirely). ~1% are AI-corrected (right company, wrong person -> AI finds the real name).
-- **Personal (Branch B):** no direct reverse-lookup on v2 (see Branch B GAP above) — personal emails are resolved downstream via the name-based Phases 5/6, with precision gated by Phase 7.
+- **Personal (Branch B):** matched directly by the async `batch_person_identify`; emails it does not match are resolved downstream via the name-based Phases 4/5, with precision gated by Phase 6.
 
 ---
 
@@ -274,7 +272,7 @@ Only for emails where:
 
 ### Script
 
-In v2 the filter key is always `field` (the v1 `filter_type` / `column` split is gone). Person-name filters on `basic_profile.name`; current-employer name filters on `experience.employment_details.current.company_name`. `page_size` becomes `limit`.
+The filter key is always `field`. Person-name filters on `basic_profile.name`; current-employer name filters on `experience.employment_details.current.company_name`; `limit` caps the page size.
 
 ```ts
 // model query: find FirstName at CompanyName
@@ -333,23 +331,7 @@ Check each returned profile: does "kyle" appear in `basic_profile.name`? If yes,
 
 ---
 
-## Phase 4: Email-contains search + verification
-
-The v1 design searched PersonDB's `emails` field (an array field containing personal and alternative email addresses stored in profiles) on the email's local part. This worked for ALL email types: work, edu, and personal.
-
-> **V2 GAP:** There is **no `emails` filter column** on v2 `person_search` — you cannot search
-> profiles by "email contains <local part>". The v1 `column: "emails"` filter (and its
-> `filter_type` vs `column` quirk) has no v2 equivalent.
->
-> **Port:** drop the email-substring search. The work this phase did is absorbed by:
-> - **Phase 3** already handles work/edu name+company resolution via `person_search`.
-> - **Phase 5** (name-only `person_search`) and **Phase 6** (web search → `person_search` →
->   `person_enrich`) handle the personal-email cases this phase used to catch.
->
-> Keep the verification logic below — it is API-agnostic and still gates every candidate that
-> Phases 3/5/6 produce.
-
-### Verification logic (CRITICAL -- do not skip)
+## Candidate verification (CRITICAL -- do not skip)
 
 Without verification, name/substring matches produce false positives. For example, a search for "wraecca" might match "Alessandro Racca" because "racca" is a substring.
 
@@ -371,7 +353,7 @@ Without verification, name/substring matches produce false positives. For exampl
 - The name match from Step 1 is the only gate
 - This means personal email matches have lower precision
 
-In v2, a search profile carries its name at `basic_profile.name`; flatten that before verifying.
+A search profile carries its name at `basic_profile.name`; flatten that before verifying.
 
 ```python
 def verify_candidate_match(email, name_parts, profile, domain_map):
@@ -408,7 +390,7 @@ def verify_candidate_match(email, name_parts, profile, domain_map):
 
 ---
 
-## Phase 5: Person search by name for personal emails
+## Phase 4: Person search by name for personal emails
 
 Last resort for personal emails where we can extract a plausible full name from the email prefix.
 
@@ -465,7 +447,7 @@ If 1-3 results returned, take the first one. If 0 or 4+, mark as unmatched.
 
 ---
 
-## Phase 6: Web search fallback for all remaining unmatched emails
+## Phase 5: Web search fallback for all remaining unmatched emails
 
 Final fallback for emails that all previous phases missed. Uses web search to find the person's profile URL, then enriches via that URL. This catches vanity domains (e.g., carolewainaina.com), personal brand domains, and any email not indexed in Crustdata's database.
 
@@ -537,16 +519,16 @@ return r.ok ? { person: r.data?.[0]?.matches?.[0]?.person_data } : { error: r.me
 
 ---
 
-## Phase 7: Scoring gate (applied to all candidates from Phases 3-6)
+## Phase 6: Scoring gate (applied to all candidates from Phases 3-5)
 
-All candidate matches produced by Phases 3, 5, and 6 must pass through this scoring gate before being accepted. Phase 2 Branch A (work/edu `business_emails`) results are exempt — they have their own employer-domain + name post-verification. (Phase 2 Branch B and Phase 4 are V2 gaps and produce no candidates.)
+All candidate matches produced by Phases 3, 4, and 5 must pass through this scoring gate before being accepted. Phase 2 results are exempt — Branch A has its own employer-domain + name post-verification, and Branch B matches are keyed on the email itself (the API matched the identifier directly).
 
 ### Hard requirements (both must pass)
 
 1. **name_sim > 0.8** -- The similarity between the name extracted from the email prefix and the candidate profile name must exceed 0.8. This prevents a perfect company match from compensating for a bad name match.
 2. **combined_score > 0.7** -- The overall combined score (incorporating name similarity, company match, and any other signals) must exceed 0.7.
 
-Phase 7 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`. This prevents a perfect company match from compensating for a bad name match. For example, finding someone at the right company whose name does not resemble the email prefix will be rejected even if the company match is perfect.
+Phase 6 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`. This prevents a perfect company match from compensating for a bad name match. For example, finding someone at the right company whose name does not resemble the email prefix will be rejected even if the company match is perfect.
 
 ### When a candidate fails
 
@@ -629,9 +611,10 @@ Total emails: {N}
 
 Breakdown by method:
   Phase 2 (person_enrich):    {count}
+  Phase 2B (batch_identify):  {count}
   Phase 3 (name+company):     {count}
-  Phase 5 (name_search):      {count}
-  Phase 6 (web_search):       {count}
+  Phase 4 (name_search):      {count}
+  Phase 5 (web_search):       {count}
 ```
 
 ---
@@ -647,7 +630,7 @@ For each email:
 |   +-- Yes -> Extract domain -> company_identify({ domains: [...] })
 |   |   +-- Found company? -> Store in domain_map
 |   |   +-- Not found? -> Continue (no company info for this domain)
-|   +-- No (personal) -> Skip to Phase 5/6 (Phase 2 Branch B is a V2 GAP)
+|   +-- No (personal) -> Continue to Phase 2 Branch B
 |
 +-- Phase 2: Branch by email type
 |   |
@@ -658,33 +641,30 @@ For each email:
 |   |   |   +-- Failed verification? -> Continue to Phase 3
 |   |   +-- Not found? -> Continue to Phase 3
 |   |
-|   +-- Personal (Branch B): V2 GAP -- no reverse personal-email lookup
-|       +-- Skip directly to Phase 5 (name search) then Phase 6 (web search)
+|   +-- Personal (Branch B): batch_person_identify({ emails: [...] }) -> poll batch_job_get -> batch_results
+|       +-- Matched? -> DONE (method=batch_identify)
+|       +-- Not matched? -> Continue to Phase 4 (name search) then Phase 5 (web search)
 |
 +-- Phase 3: Is it work/edu AND have company name AND name parts?
 |   +-- Yes -> person_search(filters: basic_profile.name + experience.employment_details.current.company_name)
-|   |   +-- Found + name verified? -> Phase 7 scoring gate -> DONE (method=name+company)
-|   |   +-- Not found? -> Continue to Phase 5
-|   +-- No -> Skip to Phase 5
+|   |   +-- Found + name verified? -> Phase 6 scoring gate -> DONE (method=name+company)
+|   |   +-- Not found? -> Continue to Phase 4
+|   +-- No -> Skip to Phase 4
 |
-+-- Phase 4: V2 GAP -- no `emails` filter column on person_search
-|   +-- (email-contains search dropped; its cases are covered by Phases 3/5/6)
-|   +-- Verification logic still gates all Phase 3/5/6 candidates
-|
-+-- Phase 5: Is it personal AND has 2+ name parts?
++-- Phase 4: Is it personal AND has 2+ name parts?
 |   +-- Yes -> person_search(filters: basic_profile.name="FirstName LastName")
-|   |   +-- 1-3 results returned + name verified? -> Phase 7 scoring gate -> DONE (method=name_search)
-|   |   +-- 0 or 4+ results? -> Continue to Phase 6
-|   +-- No -> Continue to Phase 6
+|   |   +-- 1-3 results returned + name verified? -> Phase 6 scoring gate -> DONE (method=name_search)
+|   |   +-- 0 or 4+ results? -> Continue to Phase 5
+|   +-- No -> Continue to Phase 5
 |
-+-- Phase 6: Still unmatched? (any email type)
++-- Phase 5: Still unmatched? (any email type)
 |   +-- web_search_live({ query: "EMAIL linkedin", sources: ["web"] })
-|   |   +-- Found linkedin.com/in/ URL? -> person_enrich({ professional_network_profile_urls: [URL] }) -> Phase 7 scoring gate -> DONE
+|   |   +-- Found linkedin.com/in/ URL? -> person_enrich({ professional_network_profile_urls: [URL] }) -> Phase 6 scoring gate -> DONE
 |   +-- No URL found? -> web_search_live({ query: "who is EMAIL", sources: ["ai"] })
-|   |   +-- Extracted person name? -> person_search(name) -> get profile URL -> person_enrich -> Phase 7 scoring gate -> DONE
+|   |   +-- Extracted person name? -> person_search(name) -> get profile URL -> person_enrich -> Phase 6 scoring gate -> DONE
 |   +-- Nothing found? -> UNMATCHED
 |
-+-- Phase 7: Scoring gate (applied to all candidates from Phases 3-6)
++-- Phase 6: Scoring gate (applied to all candidates from Phases 3-5)
     +-- Requires BOTH: name_sim > 0.8 AND combined_score > 0.7
     +-- Pass? -> Accept match
     +-- Fail? -> Reject, continue to next phase or mark UNMATCHED
@@ -702,11 +682,11 @@ For each email:
 
 4. **Name/substring candidates have an extremely high false positive rate without verification.** In testing: 1,540 rejections vs 37 accepts. Substring name matching produces many spurious matches. Strict name + company verification is essential.
 
-5. **Personal-email reverse lookup is a v2 GAP.** v1 resolved personal emails directly via the `personal_email` enrich param and an `emails` filter column on person search. Neither exists on v2 — there is no personal-email identifier for `person_enrich` and no `emails` filter `field` on `person_search`. Personal emails are now resolved only via name-based Phases 5/6.
+5. **Personal-email reverse lookup is async-only.** `person_enrich` has no personal-email identifier and `person_search` has no `emails` filter `field` — the only direct path is `batch_person_identify` (submit the job, poll `batch_job_get`, read `batch_results`); emails it does not match fall back to the name-based Phases 4/5.
 
 6. **For work/edu emails, no company = no match.** If Phase 1 didn't identify the company for a domain, do NOT accept name-search results for emails at that domain. There's nothing to verify against.
 
-7. **Phase 5 must verify names, not just count results.** The old approach of "accept first result if <= 3 results" produces false positives like "Bert Zacharin" matching "Zacharie Bere". Both name parts from the email must appear in the profile name.
+7. **Phase 4 must verify names, not just count results.** Accepting the first result just because <= 3 came back produces false positives like "Bert Zacharin" matching "Zacharie Bere". Both name parts from the email must appear in the profile name.
 
 8. **Edu emails work with `person_enrich`.** Despite the identifier being called `business_emails`, it matches faculty and staff at universities.
 
@@ -714,9 +694,9 @@ For each email:
 
 10. **`person_search` returns results under `r.data.profiles`** (and everything is under `r.data` first). A failed call does NOT abort the script — always branch on `r.ok` (or `unwrap`), or an unchecked failure looks like "no results".
 
-11. **`(.)` is a literal case-insensitive substring, not a regex alternation.** A piped value like `"a|b"` matches nothing on v2 person search — use `any_of(field, [...])` / `in_` for N values. Filter on `field` (the v1 `filter_type` vs `column` split is gone); read responses off the `Returns:` paths (e.g. `social_handles.professional_network_identifier.profile_url`, not the `experience.…` field you filter on).
+11. **`(.)` is a literal case-insensitive substring, not a regex alternation.** A piped value like `"a|b"` matches nothing on person search — use `any_of(field, [...])` / `in_` for N values. Filter on `field`; read responses off the `Returns:` paths (e.g. `social_handles.professional_network_identifier.profile_url`, not the `experience.…` field you filter on).
 
-12. **Phase 7 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`.** This prevents a perfect company match from compensating for a bad name match. Without the `name_sim` hard gate, false positives like "Bert Zacharin" matching "Zacharie Bere" can slip through.
+12. **Phase 6 requires BOTH `name_sim > 0.8` AND `combined_score > 0.7`.** This prevents a perfect company match from compensating for a bad name match. Without the `name_sim` hard gate, false positives like "Bert Zacharin" matching "Zacharie Bere" can slip through.
 
 ---
 
@@ -749,7 +729,7 @@ if (!r.ok) return { error: r.message };
 return { profile_url: r.data.profiles?.[0]?.social_handles?.professional_network_identifier?.profile_url };
 ```
 
-The profile URL you need is at `social_handles.professional_network_identifier.profile_url` (this replaces v1's `flagship_profile_url`).
+The profile URL you need is at `social_handles.professional_network_identifier.profile_url`.
 
 **Fallback:** If not found in the person DB, try web search:
 
@@ -855,7 +835,7 @@ If personal contact info enrichment is not available or returns empty for techni
 
 ### Find their GitHub username
 
-Use `dev_platform_enrich` (the v2 dev-platform/GitHub enrichment). Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
+Use `dev_platform_enrich` (the dev-platform/GitHub enrichment). Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
 
 ```ts
 // model query: find this person's GitHub profile (and any public email)
