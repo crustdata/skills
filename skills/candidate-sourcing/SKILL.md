@@ -51,7 +51,7 @@ Before searching, extract or confirm these details from the user. **Do not assum
 - Nice-to-have signals (open source contributions, publications, specific frameworks)
 - Any deal-breakers or filters (e.g., "no FAANG lifers", "must have startup experience")
 
-Use the company and role details to research what makes this company compelling to candidates — check their website, recent funding, product launches, or press mentions via `crustdata_web_search`. This research informs the company blurb in Phase 4.
+Use the company and role details to research what makes this company compelling to candidates — check their website, recent funding, product launches, or press mentions via the Crustdata MCP's `web_search_live` tool. This research informs the company blurb in Phase 4.
 
 ### Search by technical output, not job title
 
@@ -65,27 +65,29 @@ Three signals matter more than years of experience or company prestige:
 
 ### Search sources and patterns
 
-**Crustdata `people_search_db`** for structured search:
-```json
-{
-  "params": {
-    "filters": {
-      "op": "and",
-      "conditions": [
-        {"column": "current_employers.title", "type": "(.)","value": "ML Engineer"},
-        {"column": "current_employers.name", "type": "[.]", "value": "Company Name"}
-      ]
-    },
-    "limit": 20
-  }
-}
+**Crustdata `person_search`** (via the Code Mode `execute` tool) for structured search:
+```ts
+// model query: find ML engineers at Company Name
+const r = await callTool("person_search", {
+  filters: { op: "and", conditions: [
+    { field: "experience.employment_details.current.title", type: "(.)", value: "ML Engineer" },
+    { field: "experience.employment_details.current.company_name", type: "[.]", value: "Company Name" },
+  ]},
+  limit: 20,
+});
+if (!r.ok) return { error: r.message };
+return r.data.profiles.map(p => ({
+  name: p.basic_profile?.name,
+  title: p.basic_profile?.current_title,
+  url: p.social_handles?.professional_network_identifier?.profile_url,
+}));
 ```
 
 **Research papers** — search arXiv, Google Scholar, Semantic Scholar for the core technical problem. Look at first/second authors, especially those not at top-5 labs.
 
 **GitHub** — search repos by topic/keyword, look at meaningful contributors (not just maintainers).
 
-**Crustdata web search** — `"[technical problem]" site:arxiv.org`, `"[name]" "[company]" github`, `"[community]" alumni engineer ML`.
+**Crustdata web search** (`web_search_live`) — `"[technical problem]" site:arxiv.org`, `"[name]" "[company]" github`, `"[community]" alumni engineer ML`.
 
 ### Output from Phase 1
 
@@ -101,41 +103,43 @@ A list of candidates, each with: full name, current role, current company, any s
 
 Use this exact priority order. Stop as soon as you get a confident match.
 
-**Step 1: `crustdata_people_search_db`** (always try this first)
+**Step 1: `person_search`** (always try this first)
 
-```json
-{
-  "params": {
-    "filters": {
-      "op": "and",
-      "conditions": [
-        {"column": "name", "type": "[.]", "value": "Person Name"},
-        {"column": "current_employers.name", "type": "[.]", "value": "Company Name"}
-      ]
-    },
-    "limit": 3
-  }
-}
+```ts
+// model query: verify LinkedIn URL for Person Name at Company Name
+const r = await callTool("person_search", {
+  filters: { op: "and", conditions: [
+    { field: "basic_profile.name", type: "[.]", value: "Person Name" },
+    { field: "experience.employment_details.current.company_name", type: "[.]", value: "Company Name" },
+  ]},
+  limit: 3,
+});
+if (!r.ok) return { error: r.message };
+return r.data.profiles.map(p => ({
+  name: p.basic_profile?.name,
+  headline: p.basic_profile?.headline,
+  url: p.social_handles?.professional_network_identifier?.profile_url,
+}));
 ```
 
-Extract `flagship_profile_url` — this is the verified canonical LinkedIn URL.
+Extract `social_handles.professional_network_identifier.profile_url` — this is the verified canonical LinkedIn URL.
 
 **Tips:**
 - Company names have variations ("Google DeepMind" vs "DeepMind" vs "Google") — try shorter names first, then variations
-- If 0 results, try past employers or just the person's name with a broader filter
+- If 0 results, try past employers (`experience.employment_details.past.company_name`) or just the person's name with a broader filter
 - If multiple results, match by headline, location, or education
-- Run these in batches of 5-6 parallel calls for efficiency
+- Run these as a single `execute` script that fans out independent lookups with `parallelMap` (batch the candidate list, then map) for efficiency
 
-**Step 2: `crustdata_web_search`** (fallback when Step 1 returns 0)
+**Step 2: `web_search_live`** (fallback when Step 1 returns 0)
 
-```json
-{
-  "params": {
-    "query": "Person Name Company distinctive-keyword",
-    "site": "linkedin.com",
-    "limit": 5
-  }
-}
+```ts
+// model query: find LinkedIn profile for Person Name at Company
+const r = await callTool("web_search_live", {
+  query: "Person Name Company distinctive-keyword",
+  site: "linkedin.com",
+});
+if (!r.ok) return { error: r.message };
+return r.data.results;
 ```
 
 Verify the result matches by checking the snippet for employer/role alignment. Don't just grab the first LinkedIn URL.
@@ -146,7 +150,7 @@ Keep whatever URL exists but add a note: "LinkedIn URL unverified." Never fabric
 
 ### Slug comparison
 
-When verifying an existing URL: extract the slug (part after `linkedin.com/in/`), strip trailing slashes, compare case-insensitively. Different slugs = wrong URL, use the `flagship_profile_url` instead.
+When verifying an existing URL: extract the slug (part after `linkedin.com/in/`), strip trailing slashes, compare case-insensitively. Different slugs = wrong URL, use the verified URL from `social_handles.professional_network_identifier.profile_url` instead.
 
 ### Real mistakes this prevents
 
@@ -174,42 +178,50 @@ Every candidate needs an email address for the Gmail draft. Use this priority ch
 
 ### 3A: Business email via Crustdata enrichment
 
-Batch up to 25 LinkedIn URLs per call:
-```
-crustdata_people_enrich:
-  linkedin_profile_url: "url1,url2,url3..."
-  fields: "name,business_email"
+Use `person_enrich` (via the Code Mode `execute` tool). It takes an array of LinkedIn URLs in `professional_network_profile_urls` (≤25 per call — `chunk(urls, 25)` then `parallelMap`), and field GROUPS (not leaf names) in `fields`. The `contact` group returns emails and phone numbers:
+
+```ts
+// model query: enrich business emails for a batch of candidate LinkedIn URLs
+const urls = ["url1", "url2", "url3"]; // from Phase 2
+const batches = chunk(urls, 25);
+const results = await parallelMap(batches, async (batch) => {
+  const r = await callTool("person_enrich", {
+    professional_network_profile_urls: batch,
+    fields: ["basic_profile", "contact"],
+  });
+  return r.ok ? r.data : [];
+});
+// each match: matches[0].person_data.contact.business_emails[].email
+return results.flat();
 ```
 
-The `fields: "name,business_email"` parameter is critical — the default response does NOT include business email.
+The `contact` field group is critical — the default (`basic_profile` only) response does NOT include emails. Map each result back to its input URL via `matched_on`.
 
 **Expected hit rates:** ~70-80% for professionals at known companies, ~40-50% for independent operators, ~20-30% for people between roles.
 
-### 3B: Personal email via Crustdata person enrichment
+### 3B: Personal email via Crustdata contact enrichment
 
-Crustdata's person enrich API can return personal email addresses directly. This is faster and more reliable than GitHub commit extraction, so **always try this before falling back to GitHub**.
+**For contact-only needs, prefer `person_contact_enrich` over `person_enrich` on cost.** `person_enrich` *can* return personal email (+2) and phone (+2) via its `contact` group, but it also bills a base profile charge (base 1 + contact tiers, cap 7). `person_contact_enrich` is the contact-only tool — it skips the base-profile charge (cap 5), so it's cheaper when you only want contact data. Try this before falling back to GitHub.
 
-Request personal emails by including `fields=personal_contact_info.personal_emails`:
-```
-crustdata_people_enrich:
-  linkedin_profile_url: "url1,url2,url3..."
-  fields: "personal_contact_info.personal_emails"
-```
-
-The response includes a `personal_contact_info` object with a `personal_emails` array containing the person's personal email addresses (Gmail, ProtonMail, etc.).
-
-You can combine this with business email and phone numbers in a single call:
-```
-crustdata_people_enrich:
-  linkedin_profile_url: "url1,url2,url3..."
-  fields: "name,business_email,personal_contact_info.personal_emails,personal_contact_info.phone_numbers"
+`person_contact_enrich` takes the same `professional_network_profile_urls` array (≤25 per call) and returns a `contact` object with `business_emails`, `personal_emails`, and `phone_numbers`. Pick tiers via dotted `fields`:
+```ts
+// model query: enrich personal emails + phone for candidate LinkedIn URLs
+const r = await callTool("person_contact_enrich", {
+  professional_network_profile_urls: chunk(urls, 25)[0],
+  fields: ["contact.personal_emails", "contact.phone_numbers"],
+});
+if (!r.ok) return { error: r.message };
+// per match: matches[0].person_data.contact.personal_emails[].email (objects), .phone_numbers[] (bare strings)
+return r.data;
 ```
 
-**Credit cost:** 2 credits per profile for `personal_contact_info.personal_emails`, 2 credits per profile for `personal_contact_info.phone_numbers` (on top of the base enrichment cost).
+The response `person_data.contact` object has a `personal_emails` array of objects (`{ email, status }` — read `.email`, like `business_emails`; Gmail, ProtonMail, etc.) and a `phone_numbers` array of bare strings.
 
-**Batch limit:** Up to 25 LinkedIn URLs per call, same as business email enrichment.
+**Credit cost:** `person_contact_enrich` has no base charge and is priced per contact tier — roughly +1 business email, +2 personal email, +2 phone number, capped at 5 per profile. These per-tier numbers are a marginal/ceiling estimate, not a guaranteed cap: requesting a single dotted tier does NOT reliably limit the bill to that tier's increment — a `fields: ["contact.personal_emails"]` call has been observed billing the full 5-credit cap and returning all three tiers. It's still cheaper than `person_enrich` for contact data because it skips the base-profile charge, but don't assume one dotted field bounds the cost below the cap.
 
-**Recommended approach:** Combine steps 3A and 3B into a single enrichment call by requesting both `business_email` and `personal_contact_info.personal_emails` fields together. This saves an API round-trip and gets both email types at once.
+**Batch limit:** Up to 25 LinkedIn URLs per call.
+
+**Recommended approach:** `person_contact_enrich` returns business, personal, and phone in one call — request the tiers you need together to save round-trips. `person_enrich` (Phase 3A) can also return all three contact tiers via its `contact` group, but it adds a base-profile charge, so prefer `person_contact_enrich` when you only need contact data.
 
 If personal email is found, prefer it over business email for cold outreach (higher response rate, less likely to be filtered by corporate spam). If this returns no personal email for a candidate, fall through to GitHub commit extraction below.
 
@@ -226,27 +238,35 @@ This is the most powerful technique for technical candidates. Git records the au
 Confirm at least 2 of: bio mentions known company/role, profile name matches, repo topics align with known expertise, web search confirms the connection.
 
 **Step 3: Find oldest non-fork repo**
-```
-crustdata_web_fetch:
-  urls: ["https://api.github.com/users/{username}/repos?sort=created&direction=asc&per_page=5"]
+```ts
+// model query: list oldest repos for GitHub user {username}
+const r = await callTool("web_enrich_live", {
+  urls: ["https://api.github.com/users/{username}/repos?sort=created&direction=asc&per_page=5"],
+});
+if (!r.ok) return { error: r.message };
+return r.data; // [{ success, url, title, content }]
 ```
 Pick first repo where `"fork": false`. Older repos (pre-2019) are more likely to have real emails.
 
 **Step 4: Extract email from commits**
 
 Method A — Commits API:
+```ts
+// model query: read first commit of {owner}/{repo}
+const r = await callTool("web_enrich_live", {
+  urls: ["https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"],
+});
 ```
-crustdata_web_fetch:
-  urls: ["https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"]
-```
-Look in `[0].commit.author.email`.
+Look in `[0].commit.author.email` within the fetched `content`.
 
 Method B — `.patch` endpoint (bypasses privacy settings):
+```ts
+// model query: read commit patch for {owner}/{repo}@{sha}
+const r = await callTool("web_enrich_live", {
+  urls: ["https://github.com/{owner}/{repo}/commit/{sha}.patch"],
+});
 ```
-crustdata_web_fetch:
-  urls: ["https://github.com/{owner}/{repo}/commit/{sha}.patch"]
-```
-Extract from `From: Name <email>` header line.
+Extract from `From: Name <email>` header line in the fetched `content`.
 
 **Step 5: Validate** — discard `*@users.noreply.github.com`, `noreply@github.com`, and any email containing `noreply`.
 
@@ -264,7 +284,7 @@ When both Crustdata personal email enrichment and GitHub don't work, try these i
 GitHub allows 60 unauthenticated requests/hour. Workarounds:
 - Use `.patch` endpoints (don't count against REST API limits)
 - Fetch HTML commit pages and extract SHAs with regex, then use `.patch`
-- Batch `crustdata_web_fetch` calls with multiple URLs (up to 10 per call)
+- Pass multiple URLs in a single `web_enrich_live` call (`urls: [...]`)
 - Process in waves — API-dependent steps first, then non-API methods while rate limit resets
 
 ### Email priority
@@ -408,38 +428,39 @@ If no email was found after the full enrichment chain, log them to the tracker w
 When processing many candidates (>5), use this sequence to minimize time:
 
 1. **Search and collect candidates** (Phase 1) — build the full list first
-2. **Batch LinkedIn verification** (Phase 2) — 5-6 parallel `people_search_db` calls; web search fallback for failures
-3. **Batch email enrichment** (Phase 3A + 3B) — up to 25 LinkedIn URLs per call with `fields: "name,business_email,personal_contact_info.personal_emails"` to get both business and personal emails in one round-trip
+2. **Batch LinkedIn verification** (Phase 2) — fan out `person_search` lookups with `parallelMap` in one `execute` script; web search (`web_search_live`) fallback for failures
+3. **Batch email enrichment** (Phase 3A + 3B) — `person_enrich` (`fields: ["basic_profile", "contact"]`) for profile + business email, then `person_contact_enrich` (`fields: ["contact.personal_emails", "contact.phone_numbers"]`) for personal email + phone (cheaper for contact-only — skips the base-profile charge). Both batch up to 25 LinkedIn URLs per call (`chunk(urls, 25)` then `parallelMap`)
 4. **Triage for GitHub** (Phase 3C) — identify candidates still missing emails who are engineers likely to have GitHub profiles; prioritize them for commit email extraction
-5. **Batch GitHub lookups** (Phase 3C) — `crustdata_web_fetch` with multiple GitHub URLs per call (up to 10)
+5. **Batch GitHub lookups** (Phase 3C) — `web_enrich_live` with multiple GitHub URLs per call (`urls: [...]`)
 6. **Web search fallbacks** (Phase 3D) — for candidates where Crustdata enrichment and GitHub both failed
 7. **Write all email copy** (Phase 4) — draft all openers in one pass, using the proof-of-work notes from Phase 1
 8. **Create all Gmail drafts** (Phase 5) — create drafts and log to tracker
 
 ### Handling large API responses
 
-Crustdata enrichment and people_search_db calls can return results that exceed token limits and get saved to files. When this happens:
+Crustdata enrichment and `person_search` calls can return large payloads. In Code Mode, shrink the response INSIDE the `execute` script before returning — only what you `return` reaches the model. Use `project`/`pick`/`compact` to keep just the fields you need, so the full payload never has to be re-parsed downstream:
 
-```python
-import json
-with open(filepath) as f:
-    data = json.load(f)
-inner = json.loads(data[0]['text'])
-for p in inner.get('profiles', []):
-    print(p.get('name'), '|', p.get('flagship_profile_url'))
+```ts
+// model query: search candidates and return a slim projection
+const r = await callTool("person_search", { filters, limit: 25 });
+if (!r.ok) return { error: r.message };
+return r.data.profiles.map(p => ({
+  name: p.basic_profile?.name,
+  url: p.social_handles?.professional_network_identifier?.profile_url,
+}));
 ```
 
-Always parse saved results with Python rather than trying to process them inline.
+Always reduce in-script (return IDs/URLs/emails, not whole profiles) rather than returning the raw response.
 
 ---
 
 ## Tool dependencies
 
 This skill requires:
-- **Crustdata MCP server** ([mcp.crustdata.com/mcp](https://mcp.crustdata.com/mcp)): provides `crustdata_people_search_db`, `crustdata_people_enrich` (with `fields` supporting `business_email`, `personal_contact_info.personal_emails`, `personal_contact_info.phone_numbers`), `crustdata_company_enrich`, `crustdata_web_search`, `crustdata_web_fetch`
+- **Crustdata MCP server** ([install.crustdata.com/mcp](https://install.crustdata.com/mcp)): a single Code Mode MCP exposing `list_tools`, `get_schema`, and `execute`. All Crustdata data tools are reached inside an `execute({ code })` TypeScript script via `await callTool(name, params)`. Tools used here: `person_search`, `person_enrich` (profile + business emails), `person_contact_enrich` (personal emails + phone numbers), `company_enrich`, `web_search_live`, `web_enrich_live`
 - **Gmail MCP**: `gmail_create_draft`
 - **Python** (with `openpyxl` for spreadsheet I/O, `csv` for tracker)
-- **Web search** (Crustdata) for fallback email discovery
+- **Web search** (Crustdata `web_search_live`) for fallback email discovery
 
 ---
 
@@ -455,15 +476,22 @@ Check the candidate's current title during Phase 1. Flag anyone whose title cont
 
 The only case where it's worth reaching out to a current founder is when their company is visibly failing. All three conditions must be true:
 
-1. **Headcount is declining** — use `crustdata_company_enrich` with the company's domain:
+1. **Headcount is declining** — use `company_enrich` with the company's domain:
+   ```ts
+   // model query: check headcount trend for example.com
+   const r = await callTool("company_enrich", {
+     domains: ["example.com"],
+     fields: ["basic_info", "headcount", "web_traffic"],
+   });
+   if (!r.ok) return { error: r.message };
+   // per match: matches[0].company_data.headcount.{ total, growth_percent }
+   return r.data;
    ```
-   crustdata_company_enrich:
-     company_domain: "example.com"
-     fields: "company_name,headcount,web_traffic,founders"
-   ```
-   Check `headcount_latest.linkedin_headcount_total_growth_percent` — look for negative month-over-month and quarter-over-quarter growth.
+   Check `headcount.growth_percent` (keys `mom`, `qoq`, `six_months`, `yoy`, `two_years`) — look for negative month-over-month (`mom`) and quarter-over-quarter (`qoq`) growth.
 
-2. **Website traffic is declining** — in the same enrichment response, check `web_traffic` for downward trends in monthly visitors.
+2. **Website traffic is declining** — check for downward trends in monthly visitors.
+
+   > Read `web_traffic.domain_traffic` from `company_enrich` (request `fields: ["web_traffic"]`) for the monthly-visitor trend; the `seo` and `news` groups are available the same way.
 
 3. **People are leaving faster than the company can sustain** — the number of ex-employees who left in the last 3 months is greater than the current headcount. This signals a company that's actively losing people, not just flat.
 
@@ -471,20 +499,17 @@ If all three conditions are met, the founder may be open to a new opportunity. I
 
 ### Handling the enrichment response
 
-Company enrichment responses can exceed token limits. Parse with Python:
-```python
-import json
-with open(filepath) as f:
-    data = json.load(f)
-inner = json.loads(data[0]['text'])
-companies = inner['companies']
-for c in companies:
-    hc = c.get('headcount_latest', c.get('headcount', {}))
-    linkedin_hc = hc.get('linkedin_headcount', '?')
-    growth = hc.get('linkedin_headcount_total_growth_percent', {})
-    mom = growth.get('1_month', 0)
-    qoq = growth.get('3_months', 0)
-    print(f"{c['company_name']}: {linkedin_hc} employees, MoM: {mom}%, QoQ: {qoq}%")
+`company_enrich` returns an array of `{ matched_on, match_type, matches: [{ confidence_score, company_data }] }`. Reduce it inside the `execute` script and return only the headcount signals you need:
+```ts
+// model query: project headcount growth signals for founder-company check
+const r = await callTool("company_enrich", { domains: ["example.com"], fields: ["basic_info", "headcount"] });
+if (!r.ok) return { error: r.message };
+return r.data.map(m => {
+  const cd = m.matches?.[0]?.company_data;
+  const hc = cd?.headcount ?? {};
+  const g = hc.growth_percent ?? {};
+  return { name: cd?.basic_info?.name, total: hc.total, mom: g.mom ?? 0, qoq: g.qoq ?? 0 };
+});
 ```
 
 ### Real examples
