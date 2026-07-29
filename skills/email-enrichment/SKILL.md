@@ -180,20 +180,22 @@ If a match is returned (`matches[0].person_data` has a name), it MUST pass post-
 
 ### Branch B: Personal emails (reverse personal-email lookup)
 
-> **V2 GAP:** The v1 `personal_email` enrich parameter (reverse email→person lookup keyed on a
-> personal email such as gmail/yahoo/outlook) has **no equivalent on the v2 surface**.
+> **V2 PATH — async only:** The v1 `personal_email` enrich parameter (reverse email→person lookup
+> keyed on a personal email such as gmail/yahoo/outlook) has no SYNC equivalent on the v2 surface:
 > `person_enrich` only accepts `professional_network_profile_urls` or `business_emails` as
-> identifiers — passing a personal email is not supported, and `person_enrich_live` accepts only
-> profile URLs. There is also no `emails` filter column on `person_search` (see Phase 4 GAP).
+> identifiers, `person_enrich_live` accepts only profile URLs, and there is no `emails` filter
+> column on `person_search` (see Phase 4 GAP). The direct path is the ASYNC
+> `batch_person_identify` — the only v2 tool that matches personal emails.
 >
-> **Port:** personal emails cannot be resolved directly. Instead, fall through to:
+> **Port:** submit `batch_person_identify({ emails: [...] })` (≤300 per job), poll
+> `batch_job_get(batch_id)` until `completed`, then read the `batch_results` rows —
+> `matches[0].person_data` carries the same ids/basic_profile/profile-URL shape as Branch A.
+> 1 credit per MATCHED identifier; unmatched identifiers are free. For emails it does not match,
+> fall through to:
 > 1. **Phase 5** — `person_search` by the full name extracted from the email prefix (works when
 >    the prefix is a clear `first.last` pattern), then `person_enrich` by the resulting profile URL.
 > 2. **Phase 6** — `web_search_live({ query: "who is EMAIL", sources: ["ai"] })` to resolve the
 >    owner's name, then `person_search` → `person_enrich`.
->
-> This is a regression from the v1 `personal_email` path (which resolved ~90% of personal emails
-> directly). Under v2, personal-email coverage relies entirely on the name-based Phases 5/6.
 
 ### Post-verification (required for every Phase 2 Branch A result -- work/edu only)
 
@@ -853,12 +855,12 @@ If personal contact info enrichment is not available or returns empty for techni
 
 ### Find their GitHub username
 
-Use `dev_platform_enrich` (the v2 dev-platform/GitHub enrichment) with the profile URL. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
+Use `dev_platform_enrich` (the v2 dev-platform/GitHub enrichment). Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
 
 ```ts
 // model query: find this person's GitHub profile (and any public email)
 const r = await callTool("dev_platform_enrich", {
-  profile_url: "https://linkedin.com/in/person1",
+  crustdata_person_id: PERSON_ID_FROM_EARLIER_PHASE, // person_data.crustdata_person_id
 });
 if (!r.ok) return { error: r.message };
 // r.data.dev_platform_profiles[]: { profile_url, name, bio, company_text, email, ... }
