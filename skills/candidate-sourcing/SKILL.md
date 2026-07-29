@@ -230,7 +230,8 @@ If personal email is found, prefer it over business email for cold outreach (hig
 This is the most powerful technique for technical candidates. Git records the author's email in every commit, and this metadata is accessible even when profile email privacy is enabled.
 
 **Step 1: Find GitHub username**
-- Check Crustdata enrichment response (may include GitHub URL, but verify it's the right person)
+- Native first: `person_enrich` with `social_handles` in `fields` returns a `dev_platform_identifier` (the GitHub handle), and adding `dev_platform_profiles` (the dev add-on, +1 credit) returns the full GitHub profile — repos, org memberships, and sometimes a public `email`. If that `email` is present and not a noreply address, use it and skip straight to Step 5
+- `dev_platform_enrich({ crustdata_person_id })` fetches the same standalone for a person you already resolved
 - Web search: `"[Name] [Company] GitHub site:github.com"`
 - Check their personal website or Twitter bio
 
@@ -238,6 +239,8 @@ This is the most powerful technique for technical candidates. Git records the au
 Confirm at least 2 of: bio mentions known company/role, profile name matches, repo topics align with known expertise, web search confirms the connection.
 
 **Step 3: Find oldest non-fork repo**
+
+If Step 1 ran a dev enrichment, its `dev_platform_profiles[].repos` entries already carry `full_name`, `is_fork`, and `github_created_at` — pick the oldest non-fork, no extra call needed. Otherwise list via the GitHub API:
 ```ts
 // model query: list oldest repos for GitHub user {username}
 const r = await callTool("web_enrich_live", {
@@ -282,6 +285,7 @@ When both Crustdata personal email enrichment and GitHub don't work, try these i
 ### 3E: Handle GitHub API rate limits
 
 GitHub allows 60 unauthenticated requests/hour. Workarounds:
+- Prefer the native dev enrichment for handle + repo discovery (Steps 1/3) — those calls never touch the GitHub REST API
 - Use `.patch` endpoints (don't count against REST API limits)
 - Fetch HTML commit pages and extract SHAs with regex, then use `.patch`
 - Pass multiple URLs in a single `web_enrich_live` call (`urls: [...]`)
@@ -457,7 +461,7 @@ Always reduce in-script (return IDs/URLs/emails, not whole profiles) rather than
 ## Tool dependencies
 
 This skill requires:
-- **Crustdata MCP server** ([install.crustdata.com/mcp](https://install.crustdata.com/mcp)): a single Code Mode MCP exposing `list_tools`, `get_schema`, and `execute`. All Crustdata data tools are reached inside an `execute({ code })` TypeScript script via `await callTool(name, params)`. Tools used here: `person_search`, `person_enrich` (profile + business emails), `person_contact_enrich` (personal emails + phone numbers), `company_enrich`, `web_search_live`, `web_enrich_live`
+- **Crustdata MCP server** ([install.crustdata.com/mcp](https://install.crustdata.com/mcp)): a single Code Mode MCP exposing `list_tools`, `get_schema`, and `execute`. All Crustdata data tools are reached inside an `execute({ code })` plain-JavaScript script via `await callTool(name, params)` — author against the TypeScript-typed surface from `get_schema`, but write no type annotations in the body. Tools used here: `person_search`, `person_enrich` (profile + business emails), `person_contact_enrich` (personal emails + phone numbers), `company_enrich`, `dev_platform_enrich` (GitHub profile + repos), `web_search_live`, `web_enrich_live`
 - **Gmail MCP**: `gmail_create_draft`
 - **Python** (with `openpyxl` for spreadsheet I/O, `csv` for tracker)
 - **Web search** (Crustdata `web_search_live`) for fallback email discovery
