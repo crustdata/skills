@@ -24,7 +24,7 @@ Two directions, one skill:
 
 The approach uses six phases in a strict waterfall. Each phase catches emails that earlier phases missed. The phases are ordered by cost (free first, then cheapest) and reliability (highest precision first).
 
-All Crustdata work runs inside `execute({ code })` scripts — write a short TypeScript script whose only I/O is `const r = await callTool("<tool>", params)`, then branch on `r.ok`. See the per-phase scripts below.
+All Crustdata work runs inside `execute({ code })` scripts — write a short plain-JavaScript script whose only I/O is `const r = await callTool("<tool>", params)`, then branch on `r.ok`. Author it against the TypeScript-typed tool surface from `get_schema`, but put NO type annotations in the body — a `: Type`, `as`, or `interface` is a parse error that fails the whole run. See the per-phase scripts below.
 
 | Phase | Crustdata tool (via `callTool`) | Targets | Cost |
 |-------|----------|---------|------|
@@ -835,7 +835,7 @@ If personal contact info enrichment is not available or returns empty for techni
 
 ### Find their GitHub username
 
-Use `dev_platform_enrich` (the dev-platform/GitHub enrichment). Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
+Check the person record first: `social_handles` carries a `dev_platform_identifier` (the person's GitHub handle) alongside the professional-network one, and adding `dev_platform_profiles` to `person_enrich`'s `fields` (the dev add-on, +1 credit) returns the full GitHub profile — repos, org memberships, `all_languages`, and sometimes a public `email` — in the same call as the profile. For a person you resolved without those groups, use standalone `dev_platform_enrich`. Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
 
 ```ts
 // model query: find this person's GitHub profile (and any public email)
@@ -864,7 +864,7 @@ Confirm at least 2 of these match: GitHub bio mentions their company/role, profi
 
 ### Extract email from commits
 
-Use `web_enrich_live` (the `urls` param is an ARRAY) to read the oldest non-fork repo's commits:
+The `dev_platform_profiles[].repos` entries already carry what you need to pick a target — `full_name`, `is_fork`, and `github_created_at`. Choose the oldest repo where `is_fork` is false; no extra call needed. Only if the enrichment returned no repos, list them with `web_enrich_live` (the `urls` param is an ARRAY):
 
 ```ts
 // model query: list the user's oldest repos to find a non-fork repo
