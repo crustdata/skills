@@ -1,0 +1,52 @@
+{
+  "skill_name": "warm-path-workspace",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "we're trying to break into Snowflake and honestly I have no idea who actually owns the buying decision there. my linkedin connections export is at ~/Downloads/Connections.csv. can you work out who we should be talking to, and whether anyone in that network can actually get me in the door? we sell Crustdata, real-time B2B company and people data API.",
+      "expected_output": "A published Deal Workspace artifact for Snowflake: account brief, 6-8 person buying group with deal roles, per-stakeholder dossiers with evidence, a weighted warm-path chain map from a teammate's connections through named intermediaries to the decision makers, signals and plays.",
+      "files": [],
+      "expectations": [
+        "Produces a self-contained workspace HTML file with embedded dossier data (parseable all-dossiers JSON block)",
+        "Buying group contains at least 4 stakeholders, each with a deal_role from the fixed vocabulary (Economic Buyer / Champion / Technical Buyer / Influencer / Blocker / End User / Unknown)",
+        "Warm-path chains carry differentiated strength scores rather than treating every connection as equivalent (more than one distinct strength value)",
+        "A senior connection (director-level or above) scores strictly higher route strength than a junior individual contributor, when both are present",
+        "At least one internal-path intermediary is a named real person carrying a stated basis for why they sit in the path",
+        "Stakeholder claims (priorities / opener) carry evidence citations rather than unsourced assertions",
+        "Warm connections are attributed to the correct owner label parsed from the export (a teammate)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "can you put together a deal workspace covering both Datadog and Confluent? I've got two linkedin exports: mine at ~/Downloads/Connections.csv and my cofounder's full export at ~/Downloads/Basic_LinkedInDataExport_07-20-2026.zip. we sell Crustdata. I want to see the decision makers at each and the warmest route to them, ideally in one thing I can share with the team.",
+      "expected_output": "One artifact with an account switcher across Datadog and Confluent, both owners' connections merged and colour-coded separately in the relationship map, chains ranked by strength.",
+      "files": [],
+      "expectations": [
+        "Produces a self-contained workspace HTML file with embedded dossier data (parseable all-dossiers JSON block)",
+        "Buying group contains at least 4 stakeholders, each with a deal_role from the fixed vocabulary (Economic Buyer / Champion / Technical Buyer / Influencer / Blocker / End User / Unknown)",
+        "Warm-path chains carry differentiated strength scores rather than treating every connection as equivalent (more than one distinct strength value)",
+        "A senior connection (director-level or above) scores strictly higher route strength than a junior individual contributor, when both are present",
+        "At least one internal-path intermediary is a named real person carrying a stated basis for why they sit in the path",
+        "Stakeholder claims (priorities / opener) carry evidence citations rather than unsourced assertions",
+        "A single artifact covers both Datadog and Confluent with an account switcher (order lists 2 accounts)",
+        "Both connection owners are represented and colour-coded distinctly in the relationship graph"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "who do we know at Cisco, and how do we get to whoever runs talent acquisition there? connections export is ~/Downloads/Basic_LinkedInDataExport_07-20-2026.zip. heads up, they've acquired a ton of companies so a bunch of people probably don't list Cisco on their profile.",
+      "expected_output": "Deal Workspace for Cisco where the warm bench includes people listing acquired brands (Splunk, AppDynamics, Duo, ThousandEyes, Meraki etc), not just literal 'Cisco', with chains ranked and the TA buying group identified.",
+      "files": [],
+      "expectations": [
+        "Produces a self-contained workspace HTML file with embedded dossier data (parseable all-dossiers JSON block)",
+        "Buying group contains at least 4 stakeholders, each with a deal_role from the fixed vocabulary (Economic Buyer / Champion / Technical Buyer / Influencer / Blocker / End User / Unknown)",
+        "Warm-path chains carry differentiated strength scores rather than treating every connection as equivalent (more than one distinct strength value)",
+        "A senior connection (director-level or above) scores strictly higher route strength than a junior individual contributor, when both are present",
+        "At least one internal-path intermediary is a named real person carrying a stated basis for why they sit in the path",
+        "Stakeholder claims (priorities / opener) carry evidence citations rather than unsourced assertions",
+        "The account alias list includes acquired brands beyond the literal parent name (at least 3 non-'cisco' aliases)",
+        "The warm bench includes at least one connection whose listed company is an acquired brand rather than the parent name"
+      ]
+    }
+  ]
+}
