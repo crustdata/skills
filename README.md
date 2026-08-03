@@ -6,8 +6,8 @@ Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://
 
 | Skill | What it does |
 |-------|-------------|
-| [Email Enrichment](./email-enrichment/) | Turn a list of names into verified business and personal emails |
-| [Candidate Sourcing](./candidate-sourcing/) | Go from "I need to hire for role X" to personalized Gmail drafts ready to send |
+| [Email Enrichment](./skills/email-enrichment/) | Turn a list of names into verified business and personal emails |
+| [Candidate Sourcing](./skills/candidate-sourcing/) | Go from "I need to hire for role X" to personalized Gmail drafts ready to send |
 
 *More skills coming soon.*
 
@@ -20,14 +20,14 @@ Every skill works with **Claude.ai** (web), **Claude Desktop** (macOS/Windows ap
 ### Claude.ai — web, no install
 
 1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
-2. **Add Crustdata** — go to [Settings → Connectors](https://claude.ai/settings/connectors) → click "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add". ([Step-by-step guide with screenshots](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+2. **Add Crustdata** — go to [Settings → Connectors](https://claude.ai/settings/connectors) → click "Add custom connector" → paste `https://install.crustdata.com/mcp` → click "Add". ([Step-by-step guide with screenshots](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 3. **Connect Gmail** (for skills that send emails) — Gmail is already listed in your Connectors. Just click "Connect" next to it
 4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
 ### Claude Desktop — macOS / Windows app
 
 1. **Get a Crustdata API key** at [crustdata.com](https://crustdata.com)
-2. **Add Crustdata** — open Settings → Connectors → "Add custom connector" → paste `https://mcp.crustdata.com/mcp` → click "Add". Same flow as Claude.ai. ([Step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+2. **Add Crustdata** — open Settings → Connectors → "Add custom connector" → paste `https://install.crustdata.com/mcp` → click "Add". Same flow as Claude.ai. ([Step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 3. **Connect Gmail** — find Gmail in your Connectors list and click "Connect"
 4. **Upload a skill** — download the `.skill` file from [Releases](https://github.com/crustdata/skills/releases) and upload it to your project
 
@@ -40,9 +40,15 @@ claude plugin marketplace add crustdata/skills
 claude plugin install crustdata@crustdata-plugin
 ```
 
-This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and Crustdata's research skills (published into `skills/` and synced per-account from the registry).
+This adds the Crustdata MCP server (800M+ profiles, 200M+ companies) and the bundled research skills.
 
-**2. Sign in — once, when you're ready.** Run **`/crustdata:login`**: your browser opens for a one-time OAuth sign-in (no key to paste) and Claude confirms in one line. That single login powers **both** the MCP tools and the private-skill sync — one shared token, silently refreshed at session start. Until you sign in, nothing nags you: Crustdata tool calls are simply gated with a one-line "run /crustdata:login" pointer. Prefer no browser? Set `CRUSTDATA_API_KEY` and the gate passes without signing in.
+**2. Sign in — once.** The first time Claude uses a Crustdata tool it asks you to connect. You can also do it up front: run `/mcp`, pick **crustdata**, and choose **Authenticate**. Your browser opens, you sign in, and Claude handles the rest. There's no API key to paste and no command to remember — Claude stores the connection and reuses it in every session.
+
+**Platform support.** The plugin is pure Node (no shell scripts, no native deps) and works the same on **macOS, Linux, Windows, and WSL**:
+
+- Requires **Node ≥ 22** on your `PATH` (the plugin's session hook runs via `node`).
+- Sign-in is handled by Claude itself, so it works wherever Claude Code does.
+- Skill sync writes only inside the plugin's own directory, on every OS.
 
 ---
 
@@ -61,9 +67,9 @@ BEFORE:                                    AFTER:
 ┌──────────────┬─────────────┐             ┌──────────────┬─────────────┬─────────────────────┬──────────────────────┐
 │ Name         │ Company     │             │ Name         │ Company     │ Business Email      │ Personal Email       │
 ├──────────────┼─────────────┤             ├──────────────┼─────────────┼─────────────────────┼──────────────────────┤
-│ Pete Koomen  │ YC          │    ──►      │ Pete Koomen  │ YC          │ pete@ycombinator.com│ koomen@gmail.com     │
-│ Kaushik Iska │ ClickHouse  │             │ Kaushik Iska │ ClickHouse  │ kaushik@clickhouse… │ iska.kaushik@gmail…  │
-│ Topher Conway│ SV Angel    │             │ Topher Conway│ SV Angel    │ topher@svangel.com  │ —                    │
+│ Ada Whitlock │ Northwind   │    ──►      │ Ada Whitlock │ Northwind   │ ada@northwind.example│ a.whitlock@example…  │
+│ Ravi Desai   │ Lumen Labs  │             │ Ravi Desai   │ Lumen Labs  │ ravi@lumenlabs.exam… │ ravi.desai@example…  │
+│ Mei Tanaka   │ Harbor VC   │             │ Mei Tanaka   │ Harbor VC   │ mei@harborvc.example │ —                    │
 └──────────────┴─────────────┘             └──────────────┴─────────────┴─────────────────────┴──────────────────────┘
 ```
 
@@ -86,7 +92,7 @@ Unlike Apollo, Hunter.io, Clearbit, ZoomInfo, People Data Labs, Coresignal, Lush
 
 Just ask Claude: *"Find emails for these people: [paste your list]"*
 
-[Full documentation and evals →](./email-enrichment/)
+[Full documentation and evals →](./skills/email-enrichment/)
 
 ---
 
@@ -132,7 +138,7 @@ Unlike Juicebox, HireEZ, SeekOut, LinkedIn Recruiter, or traditional recruiters 
 
 Tell Claude: *"I need to hire a [role]. Find candidates and set up outreach."*
 
-[Full documentation and evals →](./candidate-sourcing/)
+[Full documentation and evals →](./skills/candidate-sourcing/)
 
 ---
 

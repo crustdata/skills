@@ -71,10 +71,18 @@ export function maskKey(key) {
   return `…${key.slice(-4)}`;
 }
 
+/** The single https origin the bearer may be sent to. */
+export const CANONICAL_BASE_ORIGIN = "https://skills.crustdata.com";
+
 /**
- * The backend origin must be https (loopback-http allowed for the local e2e
- * harness) before we attach the live store bearer to a request — a hostile
+ * Gate the backend origin before we attach the bearer to a request: a hostile
  * CRUSTDATA_SKILLS_BASE_URL must not be able to forward the key to any origin (C3).
+ *
+ * Checking only the scheme never implemented that — every https host passed, so
+ * anything able to set the env var could point the key at a server it controlled and
+ * have the zip that server returned installed into the plugin's skills dir. The host
+ * is pinned now, with loopback-http still allowed for the local e2e harness, which is
+ * the only non-production use the variable is documented for.
  */
 export function isSecureBaseUrl(s) {
   let u;
@@ -83,7 +91,7 @@ export function isSecureBaseUrl(s) {
   } catch {
     return false;
   }
-  if (u.protocol === "https:") return true;
+  if (u.protocol === "https:") return u.origin === CANONICAL_BASE_ORIGIN;
   return u.protocol === "http:" && (u.hostname === "127.0.0.1" || u.hostname === "localhost" || u.hostname === "::1" || u.hostname === "[::1]");
 }
 
@@ -698,11 +706,16 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
     try {
       const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);
       if (!download.ok) {
+        // Every failure path logs. `results` is discarded by the caller, so an unlogged
+        // failure is indistinguishable from "nothing to do" — the one outcome a user
+        // cannot diagnose.
+        log(`failed skills/${slug}@${version}: ${download.error}`);
         results.push({ slug, version, state: "failed", error: download.error });
         continue;
       }
       const extracted = extractSkillFiles(download.zip);
       if (!extracted.ok) {
+        log(`failed skills/${slug}@${version}: ${extracted.error}`);
         results.push({ slug, version, state: "failed", error: extracted.error });
         continue;
       }
@@ -716,7 +729,9 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       log(`${state} skills/${slug}@${version}`);
       results.push({ slug, version, state });
     } catch (err) {
-      results.push({ slug, version, state: "failed", error: err instanceof Error ? err.message : String(err) });
+      const message = err instanceof Error ? err.message : String(err);
+      log(`failed skills/${slug}@${version}: ${message}`);
+      results.push({ slug, version, state: "failed", error: message });
     }
   }
 

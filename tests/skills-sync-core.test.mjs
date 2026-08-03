@@ -198,7 +198,11 @@ test("planSync: a malformed entry never triggers removal of the same-slug local 
 test("writeSkillTree: every file is 0o644 — the exec bit is never honored (C6)", () => {
   const dir = tmp();
   writeSkillTree(dir, [{ path: "run.sh", data: Buffer.from("#!/bin/sh"), executable: true }]);
-  assert.equal(statSync(path.join(dir, "run.sh")).mode & 0o777, 0o644);
+  const mode = statSync(path.join(dir, "run.sh")).mode & 0o777;
+  // Windows has no POSIX exec bit (Node stats a writable file as 0o666 regardless of the
+  // mode passed) — the C6 invariant there reduces to "no exec bit leaked through".
+  if (process.platform === "win32") assert.equal(mode & 0o111, 0);
+  else assert.equal(mode, 0o644);
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -252,6 +256,15 @@ test("isSecureBaseUrl: https ok, loopback-http ok, remote-http rejected", () => 
   assert.equal(isSecureBaseUrl("http://evil.example"), false);
   assert.equal(isSecureBaseUrl("ftp://x"), false);
   assert.equal(isSecureBaseUrl("not a url"), false);
+});
+
+test("isSecureBaseUrl: a FOREIGN https origin is rejected — https alone is not the gate (C3)", () => {
+  // The scheme-only check let every https host through, so anything able to set
+  // CRUSTDATA_SKILLS_BASE_URL could redirect the bearer to a server it controlled.
+  assert.equal(isSecureBaseUrl("https://evil.example"), false);
+  assert.equal(isSecureBaseUrl("https://skills.crustdata.com.evil.example"), false);
+  assert.equal(isSecureBaseUrl("https://skills.crustdata.com:8443"), false); // port is part of the origin
+  assert.equal(isSecureBaseUrl("https://skills.crustdata.com/base"), true); // path is not
 });
 
 test("runSync: refuses a non-https base — the API key is never sent (C3)", async () => {
