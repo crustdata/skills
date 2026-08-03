@@ -1,0 +1,68 @@
+{
+  "skill_name": "sales-prospecting",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build me a list of 25 US software companies with 51-1000 employees that raised at least $5M and are growing fast. I sell data infrastructure to VPs of Engineering. Include the right people at each company.",
+      "expected_output": "A scored company list (🔥/🟡/⚪) of up to 25 companies with the driving signal and its date per row, plus VP-of-Engineering-level contacts at the shortlisted companies. Categorical filter values (industry, funding stage, seniority) are resolved via company_autocomplete/person_autocomplete before searching. The search runs broad first, then at least one refinement round with a report of what each round changed. No contact enrichment happens without a stated credit cost and an explicit yes.",
+      "files": [],
+      "expectations": [
+        "Resolves industry, funding-stage, and seniority values via company_autocomplete or person_autocomplete before using them in filters",
+        "Runs a broad company_search first, then at least one refinement round, reporting what each round caught or dropped",
+        "People search is scoped to the shortlisted company ids and applies the junk filter: connections >= 100 and advisor/investor titles excluded",
+        "Every row of the final list carries a 🔥/🟡/⚪ score with the driving signal and its date",
+        "No person_contact_enrich or company_enrich call is made without stating the credit cost and receiving an explicit yes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Rank my accounts and tell me who to work first this week: stripe.com, ramp.com, brex.com, mercury.com, deel.com, rippling.com, gusto.com, notreal-xyz-9876.com",
+      "expected_output": "A ranked table of the 7 real accounts with a timing-weighted score (funding recency tiers, bumped by headcount growth or hiring), a one-line 'why' per row, and a top-5-this-week shortlist. notreal-xyz-9876.com is flagged as unresolved rather than silently dropped. Company resolution uses free company_identify calls; funding and growth data comes from a single company_search scoped by company ids.",
+      "files": [],
+      "expectations": [
+        "All domains are resolved via company_identify (free) before any paid search",
+        "Exactly one company_search fetches funding and headcount for all resolved accounts, scoped with an in filter on crustdata_company_id",
+        "notreal-xyz-9876.com is explicitly flagged as unresolved in the output, not silently dropped",
+        "Ranking is timing-weighted by funding recency (roughly: <3 months hot, 3-9 months warm, >12 months cold) with growth or hiring bumping a tier, and each row states why",
+        "Headcount growth figures come from the headcount field group of that same search, with no additional paid call for growth"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How big is the market for our product? We sell to US software companies with 51-1000 employees. Our ACV is $30K.",
+      "expected_output": "A three-layer TAM/SAM/SOM breakdown where TAM and SAM each come from a company_search count query (limit 1, reading total_count), the exact filters behind each count are stated next to the number, dollar sizing is computed as count x $30K, SOM is derived from a stated win-rate or capacity assumption, and a top-down analyst figure from web search is shown beside the bottom-up numbers.",
+      "files": [],
+      "expectations": [
+        "TAM and SAM counts each come from a company_search call with limit 1 reading total_count (no bulk result download)",
+        "The exact filter set behind each count is stated next to the number",
+        "Dollar figures are computed as company count x $30K ACV",
+        "SOM is derived from an explicitly stated win-rate or capacity assumption, not presented as a database count",
+        "A top-down market-size cross-check from web search is presented alongside the bottom-up numbers"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Track champions who leave my customers. My customer domains are acme-example.com and globex-example.com. I want a list now and a weekly alert going forward.",
+      "expected_output": "A curated list of people who recently left the two customer domains (name, role at the customer, new title, new company, start date, profile URL), with noise removed and removals explained. Then a ready-to-run curl for POST https://api.crustdata.com/watch/person/search using the same validated filters and a weekly interval, presented for approval — the watcher is not created without an explicit yes.",
+      "files": [],
+      "expectations": [
+        "person_search filters on the past employer (company_website_domain or company_id) combined with recently_changed_jobs = true",
+        "Junk and noise filtering is applied: advisor/investor/board titles excluded, connections floor applied, and internal movers or acquisition renames dropped with a stated reason",
+        "Each output row includes: name, role at the customer, new title, new company, and start date at the new company",
+        "The weekly alert is delivered as a curl command targeting POST https://api.crustdata.com/watch/person/search with the same filters and an interval trigger",
+        "No watcher is created without an explicit yes from the user, and the curl contains a YOUR_API_KEY placeholder rather than a real key"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Who should I prospect?",
+      "expected_output": "The 7-goal menu is shown. Since no config/gtm-config.md or config/persona-profile.md exists, the skill asks 1-2 quick questions (ICP and buyer titles) or offers the icp-builder skill, then confirms scope in one line and proceeds. It does not error, stall, or demand a config file.",
+      "files": [],
+      "expectations": [
+        "The 7-goal menu is presented before any search runs",
+        "The missing config does not block the run: the skill asks at most 2 inline questions or points to the icp-builder skill, then proceeds",
+        "Scope is confirmed in one line before any credits are spent"
+      ]
+    }
+  ]
+}
