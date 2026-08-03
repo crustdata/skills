@@ -1,0 +1,73 @@
+{
+  "skill_name": "account-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tell me about stripe.com. We sell data-quality tooling to engineering teams. I have no CRM or other internal tools connected, so external research only. There is no config folder in this project.",
+      "expected_output": "A full account plan: one-line read, sourced signals (headcount + 12-month growth, funding, news, open-role shape), why-we-win mapped to evidenced pains, who to talk to, entry play, risks, and dated 90-day next steps. External-only, with a note that no internal history was swept.",
+      "files": [],
+      "expectations": [
+        "Proceeds without config/gtm-config.md or config/persona-profile.md, asking at most 2 clarifying questions before researching",
+        "Calls company_identify before company_enrich and enriches by crustdata_company_ids taken from the top confidence_score match",
+        "The company_enrich call passes an explicit fields array that includes every group read, including basic_info, headcount, funding, and news",
+        "News items in the output carry article title, URL, and publish date sourced from the news group or web_search_live results",
+        "Uses a job_search aggregation (group_by on job_details.category with limit 0) to summarize hiring shape instead of listing every job",
+        "Every execute script opens with a '// user query:' or '// model query:' comment, contains no type annotations, and branches on r.ok after each callTool",
+        "Every factual claim in the plan has a source (tool result or URL); statements without a source are explicitly labeled as inference",
+        "Does not attempt to read or write any CRM, team chat, recorder, or email tool"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What's the tech stack at datadoghq.com, and where could we wedge in? We sell a metrics catalog. Check at least Snowflake, dbt, and Looker.",
+      "expected_output": "A stack map where each tool is marked job-post-confirmed or inferred, classified as displace / complement / gap relative to a metrics catalog, plus one specific wedge phrased as a sentence a rep could say.",
+      "files": [],
+      "expectations": [
+        "Every brand or tech keyword probe on content.description uses the [.] exact-token operator (e.g. via exactToken), and never the (.) operator",
+        "Keyword probes are fanned out with parallelMap inside a single execute script rather than one execute call per keyword",
+        "Each stack item in the output carries a confidence tag: job-post-confirmed (with the job post as evidence) or inferred",
+        "Each confirmed tool is classified as displace, complement, or gap",
+        "The output includes exactly one wedge, and the wedge is a single quoted first-person sentence"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Build me an org chart for browserbase.com. It's a company of about 40 people.",
+      "expected_output": "A standalone HTML org chart file: CEO at top, leaders and their reports nested underneath, each card with photo, name, clean title, and LinkedIn link. Visually reviewed before being shown.",
+      "files": [],
+      "expectations": [
+        "Follows orgchart-playbook.md: company_identify runs first; if the size it reports is at or below the small-company threshold (~50), the whole company is mapped without asking department-scoping questions, and if it reports a larger company, a department-scoping question is asked instead",
+        "The person_search call projects fields basic_profile, experience, and social_handles, and does not project professional_network.followers",
+        "Seniority filter values are resolved through person_autocomplete before filtering (values such as CXO, Vice President, Director)",
+        "Reporting structure is anchored on an authoritative public source (org-structure site, leadership page, or filings), not on connection or follower counts",
+        "Photos are embedded in the HTML as base64 data URIs, not remote image URLs",
+        "The rendered HTML is visually reviewed (headless-Chrome screenshot where a shell is available, otherwise a rendered preview) before the chart is presented to the user"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Battlecard against clay.com. We sell a data enrichment API to growth teams.",
+      "expected_output": "A battlecard with the competitor's ICP and honest strengths, their gaps vs our differentiation, landmine discovery questions, top-3 objections with responses, and traps to avoid. Messaging claims sourced from the last 90 days.",
+      "files": [],
+      "expectations": [
+        "social_post_list_live is called with an explicit limit (posts cost 1 credit each)",
+        "Every messaging or momentum claim is backed by a post, article, or job post dated within the last 90 days, or is explicitly flagged as older",
+        "The strengths section lists at least one competitor strength with a source, not only weaknesses",
+        "The battlecard contains landmine discovery questions and exactly three objections, each with a response",
+        "Hiring-focus claims come from a job_search aggregation on the competitor's domain or company id"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Account plan for brex.com. I have a CRM and email connected — use them. Team chat is not connected.",
+      "expected_output": "An account plan whose 'our history' section is built from the connected CRM's deals/contacts/notes and email threads with the brex.com domain, kept separate from external facts. No team-chat or call-recorder access is attempted.",
+      "files": [],
+      "expectations": [
+        "The internal sweep reads only the connected CRM and email; no team-chat or call-recorder tool is called",
+        "No write, update, or send operation is performed on the connected CRM or email — reads only",
+        "The plan contains a distinct 'our history' section separating internal findings from external research",
+        "Internal facts are attributed to their source (CRM note, email thread), and external facts to Crustdata results or URLs"
+      ]
+    }
+  ]
+}
