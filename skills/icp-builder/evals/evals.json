@@ -1,0 +1,63 @@
+{
+  "skill_name": "icp-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Set up my GTM config. My LinkedIn is https://www.linkedin.com/in/honglliu",
+      "expected_output": "A persona derived entirely from Crustdata enrichment: identity (name, title, company, tenure), what the company sells, an ICP explicitly labeled inferred, and voice + topics from recent posts. The persona is shown back for correction before config/persona-profile.md and config/gtm-config.md are written. Ends by suggesting sales-prospecting and account-research.",
+      "files": [],
+      "expectations": [
+        "Calls person_enrich (via execute/callTool) with the LinkedIn URL and fields limited to basic_profile, experience, and social_handles, with no contact groups",
+        "Does not request contact field groups and does not set preview: true on person_enrich",
+        "Enriches the current company via company_enrich with fields basic_info and taxonomy, using the company id from the person's current employment or a free company_identify first",
+        "Calls social_post_list_live for the profile URL with an explicit limit of 10 or fewer",
+        "Does not ask the user what they sell, who their ICP is, or for writing samples before enriching",
+        "Labels the ICP section as inferred and shows the persona back for correction before writing files",
+        "Writes both config/persona-profile.md and config/gtm-config.md",
+        "Suggests sales-prospecting and account-research as next steps"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Get me started with the GTM skills. I don't have a Crustdata connection set up yet.",
+      "expected_output": "No enrichment attempted. The skill asks for 2-3 short lines (name and role, what the company does, who they sell to) instead of an interview, then writes both config files with the ICP labeled inferred, voice set to neutral, and skipped stack slots recorded as none.",
+      "files": [],
+      "expectations": [
+        "Does not attempt any Crustdata tool call",
+        "Asks for at most 2-3 short inputs (name/role, what the company does, who it sells to), not a long questionnaire",
+        "Writes config/persona-profile.md and config/gtm-config.md from those lines",
+        "Records skipped stack tools as none and notes they run in draft-only mode",
+        "Sets the voice to neutral instead of inventing style notes",
+        "Labels the ICP as inferred"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "My GTM config is out of date. I changed jobs and we moved upmarket. New LinkedIn: https://www.linkedin.com/in/petekoomen — update my config.\n\nHere is my current config/gtm-config.md:\n\n# GTM Config\nRead by sales-prospecting and account-research at startup.\n\n## Stack\n- Data provider: crustdata\n- CRM: AcmeCRM\n- Calendar: none\n- Email: MailCo\n- Call recorder: none\n- Sequencer: none\n- Team chat: ChatCo\n\n`none` = that slot runs draft-only: drafts and CSV exports instead of pushing to the tool.\n\n## What we sell\nProduct analytics for consumer mobile teams.\n\n## ICP (inferred)\n- Industries: Software Development\n- Headcount: 51-200\n- Geography: USA\n- Funding stage: seed, series_a\n- Buyer titles: VP Product, Head of Growth\n- Buyer seniority: Vice President, Director\n\n## Customers\nnone yet\n\n## Voice\nDirect, short sentences, first-person.\n\nAnd my current config/persona-profile.md:\n\n# Persona Profile\nBuilt by icp-builder on 2026-03-02. Read by sales-prospecting and account-research.\n\n## Identity\n- Name: Jane Doe\n- Title: VP Sales\n- Company: Acme Analytics (acmeanalytics.com)\n- Tenure: since 2023\n\n## Company & what we sell\n- Product: Product analytics for consumer mobile teams\n- Category: Product analytics\n\n## Inferred ICP\nLabel: inferred. User-confirmed: yes\n- Industries: Software Development\n- Headcount: 51-200\n- Buyer titles: VP Product, Head of Growth\n\n## Voice\n- Tone: direct, short sentences, first-person",
+      "expected_output": "Summarizes the existing config supplied in the prompt in a couple of lines instead of silently overwriting it. Re-runs enrichment on the new URL, shows the refreshed persona for correction, updates both files, and carries the stack entries already in the config forward unchanged.",
+      "files": [],
+      "expectations": [
+        "Summarizes the existing config supplied in the prompt (stack, ICP, voice) in one or two lines before making changes, instead of silently overwriting it",
+        "Carries the answered stack entries forward unchanged into the updated config: CRM: AcmeCRM, Email: MailCo, Team chat: ChatCo, and the none slots stay none",
+        "Re-runs person_enrich on the new URL with fields limited to basic_profile, experience, and social_handles, with no contact groups",
+        "Does not re-ask stack questions the user already answered in the existing config",
+        "Shows the refreshed persona for correction before overwriting the files",
+        "Labels the refreshed ICP as inferred"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Onboard me. LinkedIn: https://www.linkedin.com/in/topherc. Skip the stack questions, I'll connect tools later.",
+      "expected_output": "The stack question is skipped immediately with no per-tool re-asking; every stack slot is written as none with a draft-only note. The persona is still built from the URL via Crustdata, shown for correction, and both config files are written.",
+      "files": [],
+      "expectations": [
+        "Honors the skip immediately and does not ask about any individual stack tool",
+        "Does not infer the stack from connected connectors",
+        "Writes every stack slot as none with a draft-only mode note",
+        "Still runs person_enrich, company enrichment, and social_post_list_live (limit 10 or fewer) for the persona",
+        "Shows the persona back for correction before writing files",
+        "Writes both config/persona-profile.md and config/gtm-config.md"
+      ]
+    }
+  ]
+}
