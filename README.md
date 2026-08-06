@@ -12,6 +12,8 @@ Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://
 | [Account Research](./skills/account-research/) | Know a company before you sell to it: account plan, org chart, tech stack, battlecard |
 | [ICP Builder](./skills/icp-builder/) | Paste one LinkedIn URL, get your persona, ICP, and voice as reusable config |
 | [Warm-Path Deal Workspace](./skills/warm-path-workspace/) | Map who decides at an account and who on your team can reach them |
+| [Meeting Prep](./skills/meeting-prep/) | Score today's inbound and walk into today's calls with a one-screen brief |
+| [Sales Outreach](./skills/sales-outreach/) | Write the email, the call script, the LinkedIn note, the sequence — each on a real, dated signal |
 
 *More skills coming soon.*
 
@@ -315,6 +317,100 @@ YOU HAVE:                                YOU GET:
 Just ask Claude: *"Who do we know at Northwind Systems? Here are our LinkedIn exports."*
 
 [Full documentation and evals →](./skills/warm-path-workspace/)
+
+---
+
+## Meeting Prep
+
+> Pre-call briefs and inbound lead scoring for sales teams. Score a lead against your ICP, or walk into your next call with a one-screen brief on the company and the person.
+
+**Input:** An inbound lead (or a whole day's form fills), or a company and who you're meeting
+
+**Output:** A scored verdict with dated reasons, a one-screen pre-call brief, or a discovery question plan mapped to your qualification framework
+
+### Before & After
+
+```
+YOU SAY:                                 YOU GET:
+┌───────────────────────────────┐        ┌─────────────┬─────────────────────────────────┬───────────┐
+│ "Prep my 2pm with Northwind.  │        │ Block       │ What lands in the brief         │ Dated     │
+│  I'm meeting their VP Data.   │  ──►   ├─────────────┼─────────────────────────────────┼───────────┤
+│  We sell data-quality tools." │        │ Company     │ 840 people, +26% HC 12mo        │ live      │
+└───────────────────────────────┘        │ Signals     │ $85M Series C                   │ Mar 11    │
+                                         │ Hiring      │ 9 of 34 roles are data eng      │ Jun 28    │
+                                         │ Person      │ VP Data 14 months, ex-Lumen     │ live      │
+                                         │ Opener      │ "Nine data hires since the C…"  │ 1 line    │
+                                         │ Objection   │ "We built our own checks."      │ + pre-empt│
+                                         └─────────────┴─────────────────────────────────┴───────────┘
+```
+
+### How it works
+
+1. **Resolves the lead or account** — free identity resolution against Crustdata's company database, so a whole day's inbound is resolved before a credit is spent and anything unresolvable is flagged rather than dropped
+2. **Pulls the signals that matter** — Crustdata's company enrichment (size, growth, funding, news), job postings API (what they're hiring for is what they're about to buy), people enrichment (career, tenure, background), and social posts API
+3. **Scores or writes** — a transparent rubric with the evidence and its date on every row, or a one-screen brief with three talking points, one opener, two discovery questions, and the likely objection
+
+### Use cases
+
+- **Account executives** — the two minutes before a call turn into a brief with dated evidence instead of a scroll through a company website
+- **Founders handling their own inbound** — score a form fill against your ICP and know whether to book it or nurture it
+- **SDRs triaging a queue** — rank a whole day's leads in one table, with competitors and job seekers disqualified automatically
+- **Anyone running discovery** — 8-12 open questions mapped to MEDDICC or SPICED, each tied to the evidence it tests
+
+### Try it
+
+Just ask Claude: *"Prep my 2pm with northwind.example — I'm meeting their VP Data."*
+
+[Full documentation and evals →](./skills/meeting-prep/)
+
+---
+
+## Sales Outreach
+
+> Cold email, call scripts, LinkedIn touches, reply and objection handling, and full sequences — every touch opening on one real, dated signal about the person you're writing to.
+
+**Input:** A person's LinkedIn URL, an account, or a list — plus what you sell
+
+**Output:** The copy, with the hook and its date attached so you can check it. For a list, a campaign CSV plus a written sequence spec
+
+### Before & After
+
+```
+YOU SAY:                                 YOU GET:
+┌───────────────────────────────┐        ┌─────────────────────────────────────────────────────┐
+│ "Write a cold email to        │        │ Subject: your on-call post                          │
+│  linkedin.com/in/sarahchen.   │  ──►   │                                                     │
+│  We sell incident response    │        │ Sarah, your post last Tuesday about the on-call     │
+│  tooling."                    │        │ rotation eating your senior engineers is the same   │
+└───────────────────────────────┘        │ thing I hear from every team that just doubled...   │
+                                         ├───────────────────────┬──────────────┬──────────────┤
+                                         │ Hook                  │ Source       │ Date         │
+                                         ├───────────────────────┼──────────────┼──────────────┤
+                                         │ On-call rotation post │ Recent posts │ 6 days ago   │
+                                         │ 4 open platform roles │ Job postings │ 11 days ago  │
+                                         └───────────────────────┴──────────────┴──────────────┘
+```
+
+### How it works
+
+1. **Finds the hook first** — Crustdata's social post, company enrichment, and job posting APIs pull the person's recent activity, their company's funding and news, and the roles they're hiring for. One specific dated signal, not a profile summary
+2. **Writes the touch around it** — the hook opens, one bridge line connects it to the pain you sell against, one low-friction ask closes. Your voice comes from your saved persona config, or from one question if you don't have one
+3. **Cleans it and hands it off** — a strict no-slop pass on every draft, then copy in chat, or a campaign CSV plus a sequence spec you load into whatever sequencer you run
+
+If no real signal exists, the skill says so and offers a different angle. It never invents one, and nothing sends itself.
+
+### Use cases
+
+- **Account executives** — a first line the buyer recognizes, instead of "I hope this finds you well"
+- **SDRs running sequences** — six touches with a different angle each, written out, marked 1:1 or merge-field
+- **Founders doing their own outbound** — a call script and talk-tracks for the objections you actually hear
+- **Anyone mid-thread** — paste the reply you got, get the classified read and the advance
+
+### Try it
+
+Just ask Claude: *"Write a cold email to [paste a LinkedIn URL] — we sell [what you sell]."*
+
+[Full documentation and evals →](./skills/sales-outreach/)
 
 ---
 
