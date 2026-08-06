@@ -4,7 +4,7 @@ description: >
   One-time GTM setup: paste one LinkedIn URL and Crustdata enriches it into a persona
   profile — who you are, what your company sells, your inferred ICP, your writing voice —
   saved as config/gtm-config.md and config/persona-profile.md, the files the
-  sales-prospecting and account-research skills read at startup. Use when someone says
+  sales-prospecting, account-research, sales-outreach, and meeting-prep skills read at startup. Use when someone says
   "build my ICP", "set up my GTM config", "create my persona profile", "onboard me",
   "get me started", or when another GTM skill reports the config is missing.
 ---
@@ -243,7 +243,7 @@ stack so every skill finds them in one read.
 
 ```markdown
 # Persona Profile
-Built by icp-builder on <YYYY-MM-DD>. Read by sales-prospecting and account-research.
+Built by icp-builder on <YYYY-MM-DD>. Read by sales-prospecting, account-research, sales-outreach, and meeting-prep.
 
 ## Identity
 - Name:
@@ -280,7 +280,7 @@ Label: inferred from <what the company sells + typical buyers>. User-confirmed: 
 
 ```markdown
 # GTM Config
-Read by sales-prospecting and account-research at startup.
+Read by sales-prospecting, account-research, sales-outreach, and meeting-prep at startup.
 
 ## Stack
 - Data provider: crustdata | none

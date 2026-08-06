@@ -1,0 +1,85 @@
+{
+  "skill_name": "meeting-prep",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Score this inbound lead: jordan@ramp.com, Jordan Lee, self-reported title 'Director of Data Platform', filled out the pricing form asking about pipeline monitoring. We sell data-quality tooling to engineering teams at US software companies with 200-2000 employees. Our competitors are montecarlodata.com and bigeye.com. There is no config folder in this project.",
+      "expected_output": "A scored verdict out of 7 broken into firmographic fit (0-3), buyer-title match (0-2), and timing (0-2), with a route now / nurture / decline verdict, the reasons shown, and every signal carrying a date. The title is labeled self-reported because no LinkedIn URL was given.",
+      "files": [],
+      "expectations": [
+        "Proceeds without config/gtm-config.md or config/persona-profile.md, asking at most 2 clarifying questions before scoring",
+        "Calls company_identify on the email domain before any paid company call, and takes the match with the highest confidence_score",
+        "Reads firmographics with company_search scoped to the resolved crustdata_company_id rather than calling company_enrich for a single triage lead",
+        "The score is broken into the three named components (firmographic fit out of 3, buyer-title match out of 2, timing out of 2) and totals out of 7",
+        "Every timing signal in the output carries a date (funding date, posting date, or article publish date)",
+        "The self-reported title is explicitly labeled as self-reported, since no LinkedIn URL was supplied",
+        "No close-probability percentage appears anywhere in the output",
+        "Every execute script opens with a '// user query:' or '// model query:' comment",
+        "No execute script body contains a type annotation, an 'as' cast, or a generic",
+        "Every callTool result is checked with an r.ok branch before its data is read"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Triage today's inbound and tell me who to call back. 1) sam@bigeye.com, Sam Ortiz, Head of Product. 2) priya@vercel.com, Priya Raman, VP Engineering. 3) alex@notreal-xyz-9876.com, Alex Cho, 'CTO', signing up from a personal email address. 4) dana@figma.com, Dana Wu, Data Engineer. 5) chris@datadoghq.com, Chris Bell, Director of Platform. We sell data-quality tooling to engineering teams at US software companies, 200-2000 employees. Competitors: montecarlodata.com, bigeye.com.",
+      "expected_output": "One ranked table of all five leads with fit, title, timing, score, verdict, and a why-now line each. Bigeye is declined as a competitor regardless of score. The notreal-xyz-9876.com lead appears in an unresolved list with the reason, not dropped.",
+      "files": [],
+      "expectations": [
+        "All resolvable domains go through company_identify in batched calls (chunk plus parallelMap), not one execute call per lead",
+        "A single company_search scoped with in_ on crustdata_company_id reads firmographics for the whole batch instead of one search per lead",
+        "bigeye.com is declined on the hard competitor disqualifier, and the disqualifier is named in the output, regardless of its point score",
+        "alex@notreal-xyz-9876.com appears in an unresolved or personal-email list with the reason stated, and is not silently dropped from the table",
+        "Output is a single ranked table sorted by score, with a verdict on every row",
+        "Timing signals for the batch come from a job_search aggregation with limit 0, not from one job_search per company"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Prep my 2pm with browserbase.com. I'm meeting their Head of Engineering, Eli Bingham, linkedin.com/in/eli-bingham. We sell CI infrastructure to platform teams. I have no calendar or CRM connected.",
+      "expected_output": "A one-screen brief: company block (what they do, headcount and growth, funding with date, dated news, open-roles shape), person block (role, tenure, career path, recent posts with dates, common ground), then three talking points with evidence, exactly one opener, two discovery questions, and one likely objection with a pre-empt.",
+      "files": [],
+      "expectations": [
+        "company_identify runs before any paid company call",
+        "company_enrich is called by crustdata_company_ids with exact_match true",
+        "company_enrich passes an explicit fields array containing every group read, including basic_info, headcount, funding, and news",
+        "The company enrich, job search, person enrich, and post pull for the person are fanned out with parallelMap inside one execute script after the identify stage, not run as sequential awaits in a loop",
+        "person_enrich passes an explicit fields array and does not request certifications, honors, or updated_at",
+        "social_post_list_live is called with an explicit limit, since posts cost 1 credit each",
+        "News and posts older than 60 days are excluded or explicitly labeled as background",
+        "The output contains exactly one opener, written as a single sentence in quotation marks",
+        "The opener either cites an item dated within the last 60 days or states plainly that no recent item exists, and never cites an undated or invented event",
+        "No CRM, calendar, recorder, or email tool is called"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Build me a discovery plan for my call with browserbase.com. I'm meeting their Head of Engineering, Eli Bingham, linkedin.com/in/eli-bingham. We sell CI infrastructure to platform teams. We use MEDDICC.",
+      "expected_output": "Two or three evidenced pain hypotheses, then 8-12 open discovery questions, each mapped to a MEDDICC slot and to the hypothesis it tests, plus a committed next-step ask with a date in it and a list of the MEDDICC slots this call will not cover.",
+      "files": [],
+      "expectations": [
+        "The plan contains between 8 and 12 questions, and no more than 12",
+        "Every question is mapped to a named MEDDICC slot and to the pain hypothesis it tests",
+        "Every question is open-ended, meaning none can be answered yes or no",
+        "No question asks for a fact the pulled Crustdata data already answers, such as team size or headcount",
+        "Each pain hypothesis cites a specific piece of evidence (a job posting, news item, funding event, or post) with its date",
+        "Any keyword probe for a brand, product, or tool name on content.description or job_details.title uses the [.] exact-token operator (for example via exactToken), never the (.) operator",
+        "Keyword probes are fanned out with parallelMap inside a single execute script rather than one execute call per keyword",
+        "The plan ends with a specific committed next-step ask that names a timeframe, and lists which qualification slots remain uncovered"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Build me a demo flow for Acme Corp. All I know is they clicked our pricing page twice and their VP Eng said on the intro call that they're 'growing fast'. That's the only note I have.",
+      "expected_output": "A warning that discovery is too thin for a targeted demo, an offer to run a discovery block first, and if the user still wants it, a short flow that separates the one stated item from hypotheses and names what is being skipped.",
+      "files": [],
+      "expectations": [
+        "States plainly that discovery is thin and that the demo will be generic, before producing any demo flow",
+        "Offers a discovery block at the top of the call as the alternative",
+        "Stated pains from the user's note appear under a heading distinct from the heading used for hypotheses derived from public data",
+        "Every demo beat either quotes the user's note verbatim or is explicitly labeled a hypothesis",
+        "The flow includes a recap open, per-pain beats with a confirming question, and a close plan with a specific next step",
+        "The output names at least one thing being deliberately left out of the demo"
+      ]
+    }
+  ]
+}

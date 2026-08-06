@@ -42,7 +42,7 @@ Then: "Here's who I think you are — correct me if I'm off." You fix anything w
 
 1. **Optional stack question** — name your CRM, sequencer, and other tools, or skip everything. Skipped tools are recorded as draft-only: you get drafts and CSV exports instead of pushes into the tool
 2. **One-URL enrichment** — Crustdata's person enrichment (profile and work history), company enrichment (what your company is and does), and social post APIs (your voice and topics) turn the URL into a persona. The ICP is derived from what your company sells and who typically buys it, labeled *inferred*, and shown back for correction
-3. **Config written** — `config/persona-profile.md` and `config/gtm-config.md` land in your working directory; sales-prospecting and account-research pick them up automatically
+3. **Config written** — `config/persona-profile.md` and `config/gtm-config.md` land in your working directory; sales-prospecting, account-research, sales-outreach, and meeting-prep pick them up automatically
 
 No Crustdata connection, or a thin profile? It takes 2-3 lines from you instead (name and role, what the company does, who you sell to) and writes the same files. It never runs a long interview.
 

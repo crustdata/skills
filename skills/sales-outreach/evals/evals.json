@@ -1,0 +1,75 @@
+{
+  "skill_name": "sales-outreach",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a cold email to the person at https://www.linkedin.com/in/rajatarya — he leads engineering at huggingface.co. We sell incident response tooling to engineering leaders at companies that just scaled past 200 people.",
+      "expected_output": "A hook pull runs BEFORE any copy is written: social_post_list_live keyed on the professional network profile URL with an explicit limit, and/or company-level signals from huggingface.co. Then one cold email under 90 words with a 3-5 word subject, opening on the pulled signal with its date, one bridge line, one concrete outcome, and one low-friction ask. The hook and its source date are shown alongside the draft so the user can verify it. Two or three angle variants are offered.",
+      "files": [],
+      "expectations": [
+        "A signal pull runs before any copy is drafted, not after",
+        "social_post_list_live is called with an explicit limit value (not unbounded), and the call is keyed on professional_network_profile_url",
+        "The email body is under 90 words and contains exactly one ask",
+        "The opening line references a specific pulled signal and its date is stated somewhere in the output",
+        "The draft contains no em dashes and none of: 'I hope this finds you well', 'delve', 'leverage', 'streamline', 'circling back'",
+        "2-3 angle variants are offered with a recommendation of which to send"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write a cold email to the person at https://www.linkedin.com/in/quiet-buyer-example at zzz-notreal-example.com. We sell incident response tooling.",
+      "expected_output": "The skill attempts the hook pulls, reports honestly that no recent signal was found (and which sources came back empty), and does NOT invent a post, quote, funding event, or mutual connection. It offers the alternatives instead: a role-level angle explicitly labeled as generic, a hook on a different active person at the account, the company feed, or waiting for a signal via sales-prospecting's champion tracker.",
+      "files": [],
+      "expectations": [
+        "No post, quote, funding round, news article, case study, or mutual connection is invented anywhere in the output",
+        "The output explicitly states that no recent signal was found and names which sources came back empty",
+        "At least one alternative angle is offered (role-level insight, a different person at the account, the company feed, or waiting for a signal)",
+        "Any role-level or generic angle used is explicitly labeled as not person-specific",
+        "The skill does not proceed as if a hook exists"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "They replied to my cold email saying: 'Thanks but this is way too expensive for us right now, and honestly we're happy with what we have.' What do I say?",
+      "expected_output": "The reply is classified as an objection (price plus incumbent). The real objection is diagnosed before it is answered — 'too expensive' read as unclear value or no internal champion, 'happy with what we have' read as no urgency. The response follows acknowledge, reframe, one real proof point, soft re-ask, matches the sender's length and energy, and is offered in a direct and a soft variant. No invented case study or fabricated number is used; if no proof point is available from the user's context, the skill asks for one rather than making one up.",
+      "files": [],
+      "expectations": [
+        "The reply is explicitly classified before a draft is written",
+        "The stated objection is distinguished from the diagnosed underlying objection",
+        "The response follows acknowledge, reframe, one proof point, soft re-ask",
+        "Two variants are given: one direct, one soft",
+        "No customer name, metric, or case study is fabricated; if none is known, the skill asks the user for one",
+        "The reply draft contains no em dashes and no 'just following up' or 'circling back' phrasing"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Build me a 6-touch, 3-week sequence for VPs of Data at Series B fintechs. Email and LinkedIn only, no calls.",
+      "expected_output": "A day-by-day cadence table first (day, channel, angle, personalization level), with a different angle per touch rather than the same idea restated, then every touch written out. Each touch is marked 1:1 or merge-field, and the table states which touches depend on a fresh hook and what to do once the hook goes stale. No call or voicemail touches appear, since the user excluded them.",
+      "files": [],
+      "expectations": [
+        "A cadence table is produced before the copy, with columns for day, channel, angle, and personalization level",
+        "Exactly 6 touches are planned across roughly 3 weeks, all email or LinkedIn, with no call or voicemail touch",
+        "The Angle column holds 6 distinct values and no two touches open on the same signal or proof point",
+        "Every touch is marked as 1:1 or merge-field",
+        "Hook freshness is addressed: the sequence states which touches rely on a recent signal and what replaces it once it is stale",
+        "All copy is written out, not summarized as a description of what to say"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Draft outreach for these 12 people and get me everything I need to load it into my sequencer: https://www.linkedin.com/in/topherc, https://www.linkedin.com/in/petekoomen, https://www.linkedin.com/in/kaushikiska, https://www.linkedin.com/in/ericmigicovsky, https://www.linkedin.com/in/honglliu, https://www.linkedin.com/in/rajatarya, https://www.linkedin.com/in/anurag-sahu-mle, https://www.linkedin.com/in/benoitrostykus, https://www.linkedin.com/in/hongjunchoi92, https://www.linkedin.com/in/benedictflorance, https://www.linkedin.com/in/nicolas-remerscheid, https://www.linkedin.com/in/zzz-notreal-profile-9876",
+      "expected_output": "Hooks are pulled first, fanned out with parallelMap, with the credit cost quoted before the run. People with no recent signal are listed separately for a company-level fallback rather than getting an invented first line. Contact enrichment only happens after a worst-case cost is quoted and explicitly approved, using a narrowed fields whitelist; if contact enrichment is not on the account's plan the 403 is reported plainly and the list is handed off without emails. The unresolvable profile URL is flagged by name rather than silently dropped. The handoff is a campaign CSV plus a written campaign spec — no sequencer credentials are requested and nothing is sent or activated.",
+      "files": [],
+      "expectations": [
+        "Hook pulls are fanned out with parallelMap rather than an awaited loop, and the credit cost is stated before the run",
+        "People with no recent signal are reported by name and routed to a company-level fallback, never given a fabricated hook",
+        "A worst-case credit figure is quoted and explicit approval is requested before any contact enrichment is attempted",
+        "The contact enrichment passes a narrowed fields whitelist rather than requesting all contact tiers; if the endpoint returns 403 because it is not on the plan, the run says so plainly and hands off the list without emails rather than guessing address patterns",
+        "The deliverable is a campaign CSV plus a written campaign spec that includes send window, daily ramp, threading, and stop-on-reply",
+        "No API key or sequencer credential is requested, and nothing is sent, activated, or scheduled automatically",
+        "Unmatched or unenriched rows are reported rather than dropped or filled with guessed email patterns"
+      ]
+    }
+  ]
+}
