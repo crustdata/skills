@@ -50,7 +50,7 @@ Both are optional. With no config present, the skill just asks two quick questio
 
 ### Claude.ai (web) or Claude Desktop (macOS/Windows)
 
-1. Go to **Settings > Connectors > Add custom connector**
+1. Go to **Customize > Connectors > Add custom connector**
 2. Paste `https://install.crustdata.com/mcp` and click **Add** ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 3. Download the [`.skill` file](https://github.com/crustdata/skills/releases) and upload it to your project
 4. Ask Claude: "Build me a list of target companies" or "Rank my accounts" and paste your list

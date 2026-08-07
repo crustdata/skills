@@ -58,7 +58,7 @@ The skill runs 5 phases in sequence:
 ## Setup
 
 **Claude.ai (web) or Claude Desktop (macOS/Windows):**
-1. Go to Settings → Connectors → "Add custom connector" → paste `https://install.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
+1. Go to Customize → Connectors → "Add custom connector" → paste `https://install.crustdata.com/mcp` → click "Add" ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 2. Find Gmail in your Connectors list → click "Connect"
 3. Download the [`.skill` file](https://github.com/crustdata/skills/releases) and upload it to your project
 4. Tell Claude: "I need to hire a [role]. Find candidates and set up outreach."

@@ -58,7 +58,7 @@ bert.zacharin@gmail.com
 
 ### Claude.ai or Claude Desktop
 
-1. Go to **Settings > Connectors > Add custom connector**
+1. Go to **Customize > Connectors > Add custom connector**
 2. Paste `https://install.crustdata.com/mcp` and click **Add** ([step-by-step guide](https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp))
 3. Upload a CSV or paste your email list and ask Claude to enrich it
 
