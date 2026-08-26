@@ -9,9 +9,9 @@ description: >
   should I prospect", "rank my accounts", "who's hot in my book", "list for
   <conference>", "upsell targets", "how big is this market", "track champions who
   leave customers".
-version: 0.1.0
+version: 0.1.1
 display-name: Sales Prospecting
-category: sales-gtm
+category: recruiting
 icon: list-filter
 summary: "Seven playbooks: build target lists, rank your book, size the market, track champions."
 sample-prompts:

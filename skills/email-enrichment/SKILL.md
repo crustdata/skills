@@ -9,9 +9,9 @@ description: >
   Trigger on: "enrich these emails", "who are these people", "find info for these email addresses",
   "look up these contacts", "identify people from emails", "reverse email lookup", "email to profile",
   or when someone provides a list/CSV/spreadsheet of email addresses wanting contact info.
-version: 0.1.0
+version: 0.1.1
 display-name: Email Enrichment
-category: more
+category: sales-gtm
 icon: mail-search
 summary: "Turn emails into contact profiles, or turn a list of people into verified emails and phones."
 sample-prompts:
