@@ -7,6 +7,15 @@ description: >
   wedge, competitive battlecard. Use for "tell me about <company>", "account plan for
   <company>", "org chart for <company>", "what's their tech stack", "battlecard for
   <competitor>", "how do we beat <X>", "research this account".
+version: 0.1.0
+display-name: Account Research
+category: sales-gtm
+icon: building-2
+summary: "Know a company before you call it: account plan, org chart, tech stack, or battlecard."
+sample-prompts:
+  - "Account plan for acme.com. We sell a data-quality platform to engineering teams."
+  - "Org chart for Ramp: who runs engineering and who reports to whom?"
+  - "Build me a battlecard against our closest competitor"
 ---
 
 # Account Research

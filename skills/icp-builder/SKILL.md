@@ -7,6 +7,15 @@ description: >
   sales-prospecting, account-research, sales-outreach, and meeting-prep skills read at startup. Use when someone says
   "build my ICP", "set up my GTM config", "create my persona profile", "onboard me",
   "get me started", or when another GTM skill reports the config is missing.
+version: 0.1.0
+display-name: ICP Builder
+category: sales-gtm
+icon: target
+summary: "Paste one LinkedIn URL and get the ICP, persona, and voice config every GTM skill reads."
+sample-prompts:
+  - "Set me up. My LinkedIn is linkedin.com/in/janedoe"
+  - "Build my ICP and save it for the other skills"
+  - "What's my writing voice, based on my posts?"
 ---
 
 # ICP Builder

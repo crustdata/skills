@@ -9,6 +9,15 @@ description: >
   should I prospect", "rank my accounts", "who's hot in my book", "list for
   <conference>", "upsell targets", "how big is this market", "track champions who
   leave customers".
+version: 0.1.0
+display-name: Sales Prospecting
+category: sales-gtm
+icon: list-filter
+summary: "Seven playbooks: build target lists, rank your book, size the market, track champions."
+sample-prompts:
+  - "Rank my accounts and tell me who to work first this week"
+  - "Find companies that look like our best customers"
+  - "Which champions just left our customers?"
 ---
 
 # Sales Prospecting

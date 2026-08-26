@@ -1,6 +1,15 @@
 ---
 name: warm-path-workspace
 description: Build an interactive Deal Workspace artifact for one or more target accounts - an auto-researched account brief, a buying-group map with deal roles, per-stakeholder dossiers (priorities, talking points, likely objections, a grounded opener) mined from each person's LinkedIn activity, live deal signals, prioritized plays, and a weighted warm-intro chain map that traces every route from your team's LinkedIn connections through real named intermediaries to the decision makers, ranked by how short and strong each route is. Use this whenever someone points at a company or list of companies and wants to know who to sell to and how to get in - especially if they mention or upload LinkedIn Connections.csv exports, or say things like "who do we know at X", "map our warm intros", "who are the decision makers at X", "build a stakeholder map", "find the warmest path into X", "multithread this account", or want account research turned into something shareable with their team. Trigger it even when they only say "research this account" or "help me get a meeting at X" - the warm-path mapping is the whole point.
+version: 0.1.0
+display-name: Warm-Path Deal Workspace
+category: sales-gtm
+icon: network
+summary: "See who decides at an account, and which teammate can introduce you, in one workspace."
+sample-prompts:
+  - "Who do we know at Acme? Here's our LinkedIn connections export."
+  - "Map the buying group at Ramp and how we get in"
+  - "Find the warmest path to their CTO"
 ---
 
 # Warm-Path Deal Workspace

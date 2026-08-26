@@ -10,6 +10,15 @@ description: >
   "they replied saying <X>", "handle the <objection> objection", "build a sequence",
   "draft outreach for these accounts", "write my follow-up", "give me a call script for
   <company>".
+version: 0.1.0
+display-name: Sales Outreach
+category: sales-gtm
+icon: send
+summary: "Write the cold email, call script, or sequence, opening on one real dated signal."
+sample-prompts:
+  - "Write a cold email to linkedin.com/in/sarahchen. We sell incident response tooling."
+  - "They replied 'we already have a vendor'. What do I say?"
+  - "Build me a five-touch sequence for these accounts"
 ---
 
 # Sales Outreach

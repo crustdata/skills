@@ -9,6 +9,15 @@ description: >
   stated). Runs on Crustdata company, people, job, news, and post data. Use for
   "prep my 2pm", "prep my call with <company>", "score this lead", "is this inbound
   worth my time", "triage today's inbound", "build me a discovery plan".
+version: 0.1.0
+display-name: Meeting Prep
+category: sales-gtm
+icon: calendar-clock
+summary: "Score today's inbound, and walk into every call with a one-screen brief on who you're meeting."
+sample-prompts:
+  - "Prep my 2pm with Northwind Systems"
+  - "Score this inbound lead and tell me whether it's worth my time"
+  - "Build me a discovery plan for tomorrow's call"
 ---
 
 # Meeting Prep

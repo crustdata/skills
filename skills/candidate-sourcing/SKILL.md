@@ -10,6 +10,15 @@ description: >
   finding candidates AND reaching out. Covers the entire loop — use individual skills
   (engineering-candidate-finder, contact-email-enricher, candidate-copy-drafter) only when
   the user wants just one part of the pipeline.
+version: 0.1.0
+display-name: Candidate Sourcing
+category: recruiting
+icon: user-search
+summary: "Go from an open role to Gmail drafts, each one referencing the candidate's own work."
+sample-prompts:
+  - "Find 5 ML engineers who've published on retrieval-augmented generation and draft outreach to each"
+  - "Source backend engineers in Berlin for our Series A team"
+  - "Build a candidate pipeline for a founding designer role"
 ---
 
 # Candidate Sourcing Pipeline
