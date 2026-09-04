@@ -1,6 +1,6 @@
 # Crustdata Skills
 
-Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), and [OpenAI Codex](https://developers.openai.com/codex), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
+Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), [OpenAI Codex](https://developers.openai.com/codex), and [Grok Build](https://docs.x.ai/build), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
 
 ## Skills
 
@@ -46,6 +46,17 @@ codex plugin add crustdata@crustdata-plugin
 
 Then start a new thread: Codex picks up a plugin's skills and tools at session start. Needs Codex 0.152 or newer. `/plugins` lists what is installed and `/skills` the skills it found; each one is also callable directly as `$crustdata:sales-prospecting`.
 
+### Grok Build
+
+Not in the xAI plugin catalog yet, and Grok has no documented way to add a marketplace of
+its own, so there is no install today. Add the connector on its own — see
+[Just the data, without the skills](#just-the-data-without-the-skills) — and copy any skill
+folder from `skills/` into `.grok/skills/`.
+
+### Cursor
+
+Not on the Cursor Marketplace yet, so there is no one-click install. Add the connector on its own — see [Just the data, without the skills](#just-the-data-without-the-skills) below — and copy any skill folder you want from `skills/` into `.cursor/skills/` in your project. Cursor reads `SKILL.md` from there natively.
+
 The plugin is pure Node with no native dependencies, and runs the same on macOS, Linux, Windows, and WSL. It needs Node 22 or newer on your `PATH`.
 
 ### Signing in
@@ -79,15 +90,20 @@ Full reference in the [MCP docs](https://docs.crustdata.com/for-agents/mcp).
 ```
 .claude-plugin/   plugin and marketplace manifests, for Claude
 .codex-plugin/    plugin manifest, for Codex
+.cursor-plugin/   plugin manifest, for Cursor
+.grok-plugin/     plugin manifest, for Grok Build
 .agents/plugins/  marketplace catalog, for Codex
-.mcp.json         the Crustdata connector
+.mcp.json         the Crustdata connector (Claude, Codex)
+.cursor-mcp.json  the Crustdata connector (Cursor)
+plugin.meta.json  the source every manifest above is generated from
 assets/           logo and icons
+rules/            Cursor rules
 skills/           one folder per skill above
 hooks/            session hook, syncs your skills at startup
 tests/            plugin tests
 ```
 
-One bundle serves both: the connector, the skills, and the manifests ship together, and the two manifests always carry the same version.
+One bundle serves all three clients: the connector, the skills and every manifest ship together and always carry the same version.
 
 ## License
 

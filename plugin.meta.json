@@ -20,8 +20,11 @@
     "people-search",
     "company-data"
   ],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
+  "marketplace": {
+    "name": "crustdata-plugin",
+    "displayName": "Crustdata",
+    "category": "Data & Analytics"
+  },
   "interface": {
     "displayName": "Crustdata",
     "shortDescription": "People and company data, live",
@@ -38,9 +41,30 @@
       "Which companies on my list are hiring RevOps right now?",
       "Enrich these emails with role, company, and seniority"
     ],
-    "brandColor": "#0B0B0B",
-    "category": "Data & Analytics",
-    "composerIcon": "./assets/logo.png",
-    "logo": "./assets/logo.png"
+    "brandColor": "#0B0B0B"
+  },
+  "vendors": {
+    "claude": {
+      "displayName": "Crustdata",
+      "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills."
+    },
+    "codex": {},
+    "cursor": {
+      "minClientVersions": {
+        "cursor": "3.13.0"
+      },
+      "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
+      "category": "integrations",
+      "tags": [
+        "crustdata",
+        "sales",
+        "enrichment",
+        "data",
+        "mcp"
+      ]
+    },
+    "grok": {
+      "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts."
+    }
   }
 }

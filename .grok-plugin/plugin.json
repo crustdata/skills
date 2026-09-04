@@ -1,0 +1,24 @@
+{
+  "name": "crustdata",
+  "version": "1.2.0",
+  "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
+  "author": {
+    "name": "Crustdata",
+    "email": "support@crustdata.co",
+    "url": "https://crustdata.com"
+  },
+  "homepage": "https://docs.crustdata.com",
+  "repository": "https://github.com/crustdata/skills",
+  "license": "MIT",
+  "keywords": [
+    "b2b-data",
+    "enrichment",
+    "prospecting",
+    "gtm",
+    "sales",
+    "recruiting",
+    "people-search",
+    "company-data"
+  ],
+  "logo": "assets/logo.png"
+}

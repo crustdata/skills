@@ -17,8 +17,9 @@
  *   CRUSTDATA_SKILLS_BASE_URL — backend origin override (default
  *                               https://skills.crustdata.com); used by the
  *                               local e2e harness to point at a local backend.
- *   CLAUDE_PLUGIN_ROOT        — provided by Claude Code; skills are written
- *                               ONLY under ${CLAUDE_PLUGIN_ROOT}/skills/<slug>/.
+ *   GROK_PLUGIN_ROOT,         — the installed plugin dir; skills are written ONLY under
+ *   CLAUDE_PLUGIN_ROOT          <plugin root>/skills/<slug>/. Each client is read under
+ *                               its own name first, then the Claude one.
  *
  * A hook crash must never break the session: every path exits 0, and stdout
  * carries ONLY the hook JSON (all diagnostics go to stderr, key always masked).
@@ -38,12 +39,16 @@ function logLine(message) {
 }
 
 export async function main() {
-  const pluginRoot = (process.env.CLAUDE_PLUGIN_ROOT ?? "").trim();
+  // First non-empty, not first defined: an exported-but-empty var must not mask the other.
+  const pluginRoot =
+    [process.env.GROK_PLUGIN_ROOT, process.env.CLAUDE_PLUGIN_ROOT]
+      .map((value) => (value ?? "").trim())
+      .find((value) => value !== "") ?? "";
   const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
   const baseUrl = (process.env.CRUSTDATA_SKILLS_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
 
   if (pluginRoot === "") {
-    logLine("CLAUDE_PLUGIN_ROOT not set — not running outside a plugin; skipping");
+    logLine("no plugin root in the environment — not running outside a plugin; skipping");
     return;
   }
   if (typeof globalThis.fetch !== "function") {

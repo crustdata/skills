@@ -1,0 +1,31 @@
+---
+description: How to drive the Crustdata MCP server, and which Crustdata tool to reach for. Apply whenever using the crustdata MCP server (list_tools, get_schema, execute).
+alwaysApply: false
+---
+
+The Crustdata MCP server is Code Mode. It exposes three tools — `list_tools`, `get_schema`, `execute` — and every data operation happens inside an `execute` script:
+
+```js
+const r = await callTool('person_search', { filters, limit: 25 });
+// r = { ok: true, data, credits_used } | { ok: false, status, errorType, message }
+```
+
+- Write **plain JavaScript** for `execute` — any TypeScript syntax (`: Type`, `as`, generics) is a parse error that fails the whole run before anything is billed.
+- Call `get_schema(["<tool>"])` before building filters — it returns filterable columns, value formats, and a response example.
+- A failed `callTool` returns `{ ok: false, ... }`; it does not throw. Check `ok` before using `data`.
+
+Order of preference (cheapest correct path first):
+
+- Company lookup: `company_identify` (FREE) → `company_enrich` by `crustdata_company_id` (2 credits per returned match; enriching by domain/name can fuzzy-match several companies and multiply the charge)
+- People search: `person_search` (indexed DB, ~0.03 credits/result) → only `person_search_live` (2 credits/result) when the DB returns 0 results or realtime data is required
+- Company search: `company_search` (~0.03 credits/result) → `company_search_live` (2 credits/result) only for realtime
+- Contact info (emails/phones): `person_contact_enrich` is THE tool — billed per contact type returned, no base fee, up to 25 profile URLs per call; narrow `fields` (e.g. `contact.business_emails`) to cap spend. Use `person_enrich` only for full profile data (work history, education, skills); its `preview: true` is free
+- Job listings: `job_search` (filters/sorts/aggregations, ~0.03 credits/result) or `job_search_live` (realtime scrape by company, 2 credits/result)
+- Social posts: `social_post_list_live` (posts by one person or company) or `social_post_search_live` (LinkedIn keyword search); for X/Twitter or Reddit use `web_search_live`
+- Web: `web_search_live` (1 credit/query) and `web_enrich_live` (fetch a page by URL, 1 credit/page)
+- Credits: `account_credits` (FREE) for the balance; every `callTool` result carries `credits_used` for the exact charge
+- Discover valid filter values: `company_autocomplete`, `person_autocomplete`, `job_autocomplete` (FREE)
+- Bulk lists (thousands of rows): the async `batch_*` twins (`batch_person_enrich`, `batch_company_search`, …) — submit, poll `batch_job_get`, read via `batch_results`
+- Alerts: `watch_create` / `watch_discovery_create` (always preview with `watch_preview` first — the server refuses an unpreviewed create)
+
+`list_tools` returns the full annotated tool list with per-tool pricing; trust it over this summary when they disagree.
