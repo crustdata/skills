@@ -1,7 +1,7 @@
 {
   "name": "crustdata",
   "displayName": "Crustdata",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills.",
   "author": {
     "name": "Crustdata",

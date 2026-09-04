@@ -1,0 +1,44 @@
+{
+  "name": "crustdata",
+  "version": "0.5.2",
+  "description": "Live B2B data on 800M+ people and 200M+ companies, plus bundled GTM and sourcing skills.",
+  "author": {
+    "name": "Crustdata",
+    "email": "support@crustdata.co",
+    "url": "https://crustdata.com"
+  },
+  "homepage": "https://docs.crustdata.com",
+  "repository": "https://github.com/crustdata/skills",
+  "license": "MIT",
+  "keywords": [
+    "b2b-data",
+    "enrichment",
+    "prospecting",
+    "gtm",
+    "sales",
+    "recruiting",
+    "people-search",
+    "company-data"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Crustdata",
+    "shortDescription": "People and company data, live",
+    "longDescription": "Search, filter, count and enrich across 800M+ profiles and 200M+ companies - employment history with dates and seniority, headcount over time, funding, job postings, social posts, and work emails - plus ready-made workflows for prospecting, account research, outreach, meeting prep, and candidate sourcing.",
+    "developerName": "Crustdata",
+    "category": "Data & Analytics",
+    "capabilities": ["Read"],
+    "websiteURL": "https://crustdata.com",
+    "privacyPolicyURL": "https://crustdata.com/privacy",
+    "termsOfServiceURL": "https://crustdata.com/terms",
+    "defaultPrompt": [
+      "Find senior backend engineers who left Stripe this year",
+      "Which companies on my list are hiring RevOps right now?",
+      "Enrich these emails with role, company, and seniority"
+    ],
+    "brandColor": "#0B0B0B",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png"
+  }
+}

@@ -1,6 +1,6 @@
 # Crustdata Skills
 
-Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
+Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), and [OpenAI Codex](https://developers.openai.com/codex), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
 
 ## Skills
 
@@ -37,11 +37,20 @@ claude plugin marketplace add crustdata/skills
 claude plugin install crustdata@crustdata-plugin
 ```
 
+### Codex
+
+```bash
+codex plugin marketplace add crustdata/skills
+codex plugin add crustdata@crustdata-plugin
+```
+
+Then start a new thread: Codex picks up a plugin's skills and tools at session start. Needs Codex 0.152 or newer. `/plugins` lists what is installed and `/skills` the skills it found; each one is also callable directly as `$crustdata:sales-prospecting`.
+
 The plugin is pure Node with no native dependencies, and runs the same on macOS, Linux, Windows, and WSL. It needs Node 22 or newer on your `PATH`.
 
 ### Signing in
 
-The first time Claude uses a Crustdata tool it asks you to connect. Your browser opens, you sign in, and Claude reuses that connection every session after. There's no API key to paste.
+The first time the agent uses a Crustdata tool it asks you to connect. Your browser opens, you sign in, and the connection is reused every session after. There's no API key to paste. In Codex, `codex mcp login crustdata` starts the same sign-in on demand.
 
 ### Just the data, without the skills
 
@@ -68,12 +77,17 @@ Full reference in the [MCP docs](https://docs.crustdata.com/for-agents/mcp).
 ## Structure
 
 ```
-.claude-plugin/   plugin and marketplace manifests
+.claude-plugin/   plugin and marketplace manifests, for Claude
+.codex-plugin/    plugin manifest, for Codex
+.agents/plugins/  marketplace catalog, for Codex
 .mcp.json         the Crustdata connector
+assets/           logo and icons
 skills/           one folder per skill above
 hooks/            session hook, syncs your skills at startup
 tests/            plugin tests
 ```
+
+One bundle serves both: the connector, the skills, and the manifests ship together, and the two manifests always carry the same version.
 
 ## License
 
