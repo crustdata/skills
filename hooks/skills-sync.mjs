@@ -7,13 +7,10 @@
  * `skills-sync-core.mjs`; this shell only reads the environment, runs one sync
  * pass, and emits the SessionStart JSON signal.
  *
- * Auth: the bearer comes from CRUSTDATA_API_KEY, and only from there. The MCP server
- * authenticates separately through the client's own MCP OAuth, and that token stays
- * inside the client — a hook subprocess has no supported way to read it. No key →
- * graceful no-op: the sync is skipped, bundled skills keep working.
+ * Auth: CRUSTDATA_API_KEY, else the token `/crustdata:login` stored, which IS a Crustdata API key (mcp2 issues the key as the access_token, ADR-0004) because the client's own MCP OAuth token is unreachable from a hook subprocess.
  *
  * Environment (see the skills-registry contract, §4):
- *   CRUSTDATA_API_KEY         — the bearer for skill sync. Unset → sync is skipped.
+ *   CRUSTDATA_API_KEY         — the bearer on every client; overrides a stored token, and the only source on Grok.
  *   CRUSTDATA_SKILLS_BASE_URL — backend origin override (default
  *                               https://skills.crustdata.com); used by the
  *                               local e2e harness to point at a local backend.
@@ -30,6 +27,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { getAccessToken } from "./lib/credential-store.mjs";
 import { hookOutput, runSync } from "./skills-sync-core.mjs";
 
 const DEFAULT_BASE_URL = "https://skills.crustdata.com";
@@ -40,10 +38,12 @@ function logLine(message) {
 
 export async function main() {
   // First non-empty, not first defined: an exported-but-empty var must not mask the other.
-  const pluginRoot =
-    [process.env.GROK_PLUGIN_ROOT, process.env.CLAUDE_PLUGIN_ROOT]
-      .map((value) => (value ?? "").trim())
-      .find((value) => value !== "") ?? "";
+  // Which variable answered names the client, which decides whether the store is consulted.
+  const roots = [
+    ["grok", (process.env.GROK_PLUGIN_ROOT ?? "").trim()],
+    ["claude", (process.env.CLAUDE_PLUGIN_ROOT ?? "").trim()],
+  ];
+  const [client, pluginRoot] = roots.find(([, value]) => value !== "") ?? ["none", ""];
   const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
   const baseUrl = (process.env.CRUSTDATA_SKILLS_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
 
@@ -55,10 +55,19 @@ export async function main() {
     logLine("global fetch unavailable (Node 22+ required) — skipping skill sync");
     return;
   }
+  // Claude only, since `/crustdata:login` is a Claude command; a corrupt file degrades to "no key".
+  let apiKey = envKey;
+  if (apiKey === "" && client === "claude") {
+    try {
+      apiKey = (await getAccessToken()) ?? "";
+    } catch {
+      apiKey = "";
+    }
+  }
   // No key → runSync no-ops (it treats an empty string exactly like the historical
   // no-key path), so an unconfigured install keeps its bundled skills and stays quiet.
   const { changed } = await runSync({
-    apiKey: envKey,
+    apiKey,
     baseUrl,
     pluginRoot,
     fetchImpl: globalThis.fetch,

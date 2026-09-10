@@ -63,6 +63,18 @@ The plugin is pure Node with no native dependencies, and runs the same on macOS,
 
 The first time the agent uses a Crustdata tool it asks you to connect. Your browser opens, you sign in, and the connection is reused every session after. There's no API key to paste. In Codex, `codex mcp login crustdata` starts the same sign-in on demand.
 
+That covers the tools. **The skills granted to your account need one more step**, because the sign-in above is held by the client and the hook that installs skills cannot read it:
+
+```
+/crustdata:login
+```
+
+Your browser opens on Crustdata's authorization page. Sign in there, or paste an API key on the same page if your account has no browser sign-in — either way you land in the same place, and your skills install at the start of your next session.
+
+If you would rather not sign in at all, set `CRUSTDATA_API_KEY` in your environment instead; it takes precedence over anything `/crustdata:login` stores, so a scripted install keeps working untouched. Without either, the plugin's bundled skills still work and nothing else is installed.
+
+`/crustdata:login` is Claude only. On Grok, set `CRUSTDATA_API_KEY` — it is the only source there. Codex and Cursor read the bundled skills straight from the package and sync nothing, so neither needs a credential for this.
+
 ### Just the data, without the skills
 
 Inside Claude, add Crustdata as a connector instead: **Customize > Connectors > Add custom connector**, then paste `https://install.crustdata.com/mcp`.
