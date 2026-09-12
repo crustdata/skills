@@ -10,7 +10,6 @@ description: >
   finding candidates AND reaching out. Covers the entire loop — use individual skills
   (engineering-candidate-finder, contact-email-enricher, candidate-copy-drafter) only when
   the user wants just one part of the pipeline.
-version: 0.1.0
 display-name: Candidate Sourcing
 category: recruiting
 icon: user-search

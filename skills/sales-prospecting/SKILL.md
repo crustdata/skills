@@ -9,7 +9,6 @@ description: >
   should I prospect", "rank my accounts", "who's hot in my book", "list for
   <conference>", "upsell targets", "how big is this market", "track champions who
   leave customers".
-version: 0.1.1
 display-name: Sales Prospecting
 category: recruiting
 icon: list-filter

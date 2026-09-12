@@ -10,7 +10,6 @@ description: >
   "they replied saying <X>", "handle the <objection> objection", "build a sequence",
   "draft outreach for these accounts", "write my follow-up", "give me a call script for
   <company>".
-version: 0.1.0
 display-name: Sales Outreach
 category: sales-gtm
 icon: send

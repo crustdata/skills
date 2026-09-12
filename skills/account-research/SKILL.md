@@ -7,7 +7,6 @@ description: >
   wedge, competitive battlecard. Use for "tell me about <company>", "account plan for
   <company>", "org chart for <company>", "what's their tech stack", "battlecard for
   <competitor>", "how do we beat <X>", "research this account".
-version: 0.1.0
 display-name: Account Research
 category: sales-gtm
 icon: building-2
