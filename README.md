@@ -75,6 +75,23 @@ If you would rather not sign in at all, set `CRUSTDATA_API_KEY` in your environm
 
 `/crustdata:login` is Claude only. On Grok, set `CRUSTDATA_API_KEY` — it is the only source there. Codex and Cursor read the bundled skills straight from the package and sync nothing, so neither needs a credential for this.
 
+### Getting an update mid-session
+
+Your granted skills refresh on their own at the start of every session. If we ship a new
+version while you are working and you want it now:
+
+```
+/crustdata:reload-skills
+```
+
+It syncs and prints one line saying what changed. Claude Code has a built-in
+`/reload-skills`; Claude Desktop does not, which is why the plugin carries its own. Whether
+the files are picked up without a restart is the client's call, so if a skill does not show
+up straight away, start a new session.
+
+Like `/crustdata:login`, this is a Claude and Cowork command. On Grok, set
+`CRUSTDATA_API_KEY` instead: your skills sync from it at the start of each session.
+
 ### Just the data, without the skills
 
 Inside Claude, add Crustdata as a connector instead: **Customize > Connectors > Add custom connector**, then paste `https://install.crustdata.com/mcp`.

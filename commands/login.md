@@ -1,5 +1,6 @@
 ---
 description: Sign in to Crustdata — browser OAuth; one login for the MCP tools and skill sync
+allowed-tools: Bash(node:*)
 disable-model-invocation: true
 ---
 

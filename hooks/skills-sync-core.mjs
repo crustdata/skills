@@ -112,6 +112,21 @@ export function isSafeSlug(slug) {
 }
 
 /**
+ * What may be interpolated into a LOG note. A note can become the single line
+ * /crustdata:reload-skills hands a model to relay verbatim, so anything outside our control has
+ * to be a machine token there rather than prose. Deliberately tighter than isSafeSlug: it is
+ * applied to values that already FAILED validation.
+ */
+const NOTE_TOKEN = /^[a-z0-9_.-]{1,64}$/i;
+
+/** The default renderer. The SessionStart hook passes its own, because its log is never relayed
+ *  and there the value IS the diagnostic — a slug with a slash is the publish bug you are hunting. */
+export function inNote(value) {
+  const s = String(value ?? "");
+  return NOTE_TOKEN.test(s) ? `"${s}"` : "(unprintable)";
+}
+
+/**
  * Zip entry paths are written relative to the skill folder. Reject anything
  * that could escape it: absolute paths, drive letters, backslashes, `.`/`..`
  * segments, empty segments, NUL. The top-level marker filename is reserved so
@@ -614,7 +629,7 @@ async function fetchZip(fetchImpl, url, apiKey, timeoutMs) {
  * Returns { changed, results }: `changed` is true iff a mutation (install /
  * update / remove) SUCCEEDED — the caller emits the reloadSkills signal from it.
  */
-export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000, runBudgetMs = RUN_BUDGET_MS, clock = () => Date.now() }) {
+export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, quote = inNote, now = () => new Date(), timeoutMs = 10_000, runBudgetMs = RUN_BUDGET_MS, clock = () => Date.now() }) {
   // No key → no identity → the sync is skipped entirely. Bundled base skills
   // are untouched and previously-fetched skills stay as-is (contract §6).
   if (typeof apiKey !== "string" || apiKey === "") {
@@ -623,7 +638,9 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
   }
   // Never attach the live bearer to an insecure/hostile origin (C3).
   if (!isSecureBaseUrl(baseUrl)) {
-    log(`refusing to sync against a non-https base URL (${baseUrl}) — the API key would leak`);
+    // Bounded like the other two: the env var is in this file's threat model (isSecureBaseUrl
+    // above), and a refused value reaching the relayed line is prose a model is told to pass on.
+    log(`refusing to sync against a non-https base URL ${quote(baseUrl)} — the API key would leak`);
     return { changed: false, results: [] };
   }
   const runDeadline = clock() + runBudgetMs;
@@ -642,7 +659,9 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
     // 401 (bad key), 5xx, HTML error page … all take the same exit: log, change
     // nothing (removals included — without a trusted set we cannot know what
     // should go).
-    const detail = sync.body?.error?.type ?? "unexpected response";
+    // Same bound, but a fixed phrase rather than (unprintable): this slot reads as prose.
+    const type = sync.body?.error?.type;
+    const detail = typeof type === "string" && NOTE_TOKEN.test(type) ? type : "unexpected response";
     log(`sync did not return a usable skill set (status ${sync.status}, ${detail}) — leaving local skills untouched`);
     return { changed: false, results: [] };
   }
@@ -660,7 +679,9 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
 
   for (const action of actions) {
     if (action.type === "invalid_entry") {
-      log(`skipping malformed sync entry for "${action.slug}"`);
+      // The one branch that logs without recording a result, so an all-malformed response makes
+      // this the relayed line. The slug is here because it FAILED isSafeSlug.
+      log(`skipping malformed sync entry ${quote(action.slug)}`);
       continue;
     }
     if (action.type === "up_to_date") {

@@ -27,25 +27,15 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { getAccessToken } from "./lib/credential-store.mjs";
+import { resolveSyncEnv } from "./lib/sync-env.mjs";
 import { hookOutput, runSync } from "./skills-sync-core.mjs";
-
-const DEFAULT_BASE_URL = "https://skills.crustdata.com";
 
 function logLine(message) {
   process.stderr.write(`[crustdata-skills] ${message}\n`);
 }
 
 export async function main() {
-  // First non-empty, not first defined: an exported-but-empty var must not mask the other.
-  // Which variable answered names the client, which decides whether the store is consulted.
-  const roots = [
-    ["grok", (process.env.GROK_PLUGIN_ROOT ?? "").trim()],
-    ["claude", (process.env.CLAUDE_PLUGIN_ROOT ?? "").trim()],
-  ];
-  const [client, pluginRoot] = roots.find(([, value]) => value !== "") ?? ["none", ""];
-  const envKey = (process.env.CRUSTDATA_API_KEY ?? "").trim();
-  const baseUrl = (process.env.CRUSTDATA_SKILLS_BASE_URL ?? "").trim() || DEFAULT_BASE_URL;
+  const { client, pluginRoot, apiKey, baseUrl } = await resolveSyncEnv();
 
   if (pluginRoot === "") {
     logLine("no plugin root in the environment — not running outside a plugin; skipping");
@@ -55,15 +45,6 @@ export async function main() {
     logLine("global fetch unavailable (Node 22+ required) — skipping skill sync");
     return;
   }
-  // Claude only, since `/crustdata:login` is a Claude command; a corrupt file degrades to "no key".
-  let apiKey = envKey;
-  if (apiKey === "" && client === "claude") {
-    try {
-      apiKey = (await getAccessToken()) ?? "";
-    } catch {
-      apiKey = "";
-    }
-  }
   // No key → runSync no-ops (it treats an empty string exactly like the historical
   // no-key path), so an unconfigured install keeps its bundled skills and stays quiet.
   const { changed } = await runSync({
@@ -72,6 +53,8 @@ export async function main() {
     pluginRoot,
     fetchImpl: globalThis.fetch,
     log: logLine,
+    // Nothing relays this one, and a bounded slug would hide the publish bug it exists to show.
+    quote: (value) => JSON.stringify(String(value ?? "")).slice(0, 200),
   });
   const out = hookOutput(changed);
   if (out !== null) process.stdout.write(out + "\n");

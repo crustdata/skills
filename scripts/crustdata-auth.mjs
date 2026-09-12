@@ -20,8 +20,10 @@ function maskTail(secret) {
 async function main(cmd) {
   switch (cmd) {
     case "login": {
+      // Refuse on a client NAMED as another, never on the absence of Claude's own variable: a
+      // command's environment has no CLAUDE_PLUGIN_ROOT, so that test refused every Claude user.
       // Elsewhere the sync hook ignores the store, so this would write a credential nothing reads.
-      if ((process.env.CLAUDE_PLUGIN_ROOT ?? "").trim() === "") {
+      if ((process.env.GROK_PLUGIN_ROOT ?? "").trim() !== "") {
         process.stdout.write(
           "Sign-in is available in Claude only. On this client, set CRUSTDATA_API_KEY in your environment to sync your skills.\n",
         );
