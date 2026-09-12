@@ -24,7 +24,16 @@ export interface Marker {
   slug: string;
   version: string;
   managed_by: "crustdata";
+  /** How the folder got here: a grant (sync) or a pull (`/crustdata:skills get`). Absent = grant. */
+  via?: "grant" | "pull";
   last_synced?: string;
+}
+
+/** One entry of GET /skills/catalog, reduced to what the hook may act on. */
+export interface CatalogSkill {
+  slug: string;
+  version: string;
+  access: "granted" | "available";
 }
 
 export interface LocalSkill {
@@ -37,6 +46,7 @@ export type PlanAction =
   | { type: "install"; skill: RemoteSkill }
   | { type: "update"; skill: RemoteSkill }
   | { type: "up_to_date"; skill: RemoteSkill }
+  | { type: "adopt"; skill: RemoteSkill; marker: Marker }
   | { type: "collision"; skill: RemoteSkill }
   | { type: "postinstall_permission"; skill: RemoteSkill }
   | { type: "remove"; slug: string; marker: Marker }
@@ -76,6 +86,38 @@ export interface SyncResult {
   version: string;
   state: SyncResultState;
   error?: string;
+  /** Relative path of a setup script the bundle ships; named for the person, never run. */
+  setup?: string;
+  /** Set on results from the pulled-folder pass; absent on the granted set. */
+  via?: "pull";
+}
+
+export type PullState =
+  | "invalid"
+  | "no_key"
+  | "bundled"
+  | "granted"
+  | "up_to_date"
+  | "installed"
+  | "updated"
+  | "unavailable"
+  | "failed";
+
+export interface PullResult {
+  state: PullState;
+  slug: string;
+  version?: string;
+  setup?: string;
+  error?: string;
+}
+
+export type DropState = "invalid" | "absent" | "bundled" | "granted" | "removed" | "failed";
+
+export interface DropResult {
+  state: DropState;
+  slug: string;
+  version?: string;
+  error?: string;
 }
 
 export interface RunSyncOptions {
@@ -99,6 +141,7 @@ export declare const MAX_ZIP_BYTES: number;
 export declare const MAX_TOTAL_UNCOMPRESSED_BYTES: number;
 export declare const MAX_FILE_BYTES: number;
 export declare const RUN_BUDGET_MS: number;
+export declare const POSTINSTALL_PATH: string;
 
 export declare class ZipFormatError extends Error {}
 
@@ -108,8 +151,28 @@ export declare function isSafeSlug(slug: unknown): boolean;
 export declare function isSafeRelPath(p: unknown): boolean;
 export declare function parseMarker(text: string): Marker | null;
 export declare function isValidMarker(marker: Marker | null | undefined, dirName: string): boolean;
+export declare function isPulled(marker: Marker | null | undefined): boolean;
 export declare function readLocalSkills(skillsRoot: string): LocalSkill[];
 export declare function planSync(remoteSkills: unknown, locals: LocalSkill[]): PlanAction[];
+export declare function planPullRefresh(catalogSkills: unknown, pulled: LocalSkill[]): PlanAction[];
+export declare function readCatalog(args: {
+  fetchImpl: typeof fetch;
+  base: string;
+  apiKey: string;
+  timeoutMs: number;
+  log?: (message: string) => void;
+}): Promise<{ ok: true; skills: CatalogSkill[] } | { ok: false; error: string }>;
+export declare function pullSkill(args: {
+  apiKey: string | undefined;
+  baseUrl: string;
+  pluginRoot: string;
+  slug: unknown;
+  fetchImpl: typeof fetch;
+  log?: (message: string) => void;
+  now?: () => Date;
+  timeoutMs?: number;
+}): Promise<PullResult>;
+export declare function dropSkill(args: { pluginRoot: string; slug: unknown }): DropResult;
 export declare function readZipEntries(zip: Buffer, maxEntryBytes: number): ZipEntry[];
 export declare function extractSkillFiles(
   zip: Buffer,

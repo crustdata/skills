@@ -113,7 +113,7 @@ export function isSafeSlug(slug) {
 
 /**
  * What may be interpolated into a LOG note. A note can become the single line
- * /crustdata:reload-skills hands a model to relay verbatim, so anything outside our control has
+ * /crustdata:skills hands a model to relay verbatim, so anything outside our control has
  * to be a machine token there rather than prose. Deliberately tighter than isSafeSlug: it is
  * applied to values that already FAILED validation.
  */
@@ -175,6 +175,14 @@ export function parseMarker(text) {
 export function isValidMarker(marker, dirName) {
   return marker !== null && marker !== undefined && marker.slug === dirName;
 }
+
+/** Pulled with `/crustdata:skills get`: reconciled against the catalog, not the sync set. No `via` = grant. */
+export function isPulled(marker) {
+  return marker?.via === "pull";
+}
+
+/** Named for the person, never run. */
+export const POSTINSTALL_PATH = "scripts/postinstall.sh";
 
 // ── zip reader (ported from src/skills/zip/reader.ts) ───────────────────────
 // Minimal, dependency-free zip reader driven by the central directory. Scope is
@@ -376,7 +384,8 @@ export function planSync(remoteSkills, locals) {
     }
     const marker = local?.marker ?? null;
     if (marker !== null && marker.version === skill.version) {
-      actions.push({ type: "up_to_date", skill });
+      // A pulled folder that is now granted flips to the grant without a download.
+      actions.push(isPulled(marker) ? { type: "adopt", skill, marker } : { type: "up_to_date", skill });
       continue;
     }
     if (skill.has_postinstall === true) {
@@ -391,7 +400,38 @@ export function planSync(remoteSkills, locals) {
   for (const local of locals) {
     if (local.marker === null) continue; // not ours — never touch
     if (seen.has(local.dirName) || keep.has(local.dirName)) continue;
+    if (isPulled(local.marker)) continue; // no grant to lose; the catalog decides (planPullRefresh)
     actions.push({ type: "remove", slug: local.dirName, marker: local.marker });
+  }
+  return actions;
+}
+
+/**
+ * Pulled folders against the catalog (pure): same version → up_to_date, other version → update,
+ * not listed → remove. A malformed entry holds its slug, as in planSync.
+ */
+export function planPullRefresh(catalogSkills, pulled) {
+  const versions = new Map();
+  const keep = new Set();
+  for (const entry of Array.isArray(catalogSkills) ? catalogSkills : []) {
+    const slug = entry === null || typeof entry !== "object" ? undefined : entry.slug;
+    if (isSafeSlug(slug) && typeof entry.version === "string" && entry.version !== "") {
+      if (!versions.has(slug)) versions.set(slug, entry.version);
+    } else if (typeof slug === "string") {
+      keep.add(slug);
+    }
+  }
+  const actions = [];
+  for (const local of pulled) {
+    if (!isPulled(local.marker)) continue;
+    const slug = local.dirName;
+    const version = versions.get(slug);
+    if (version === undefined) {
+      if (!keep.has(slug)) actions.push({ type: "remove", slug, marker: local.marker });
+      continue;
+    }
+    const skill = { slug, version };
+    actions.push(version === local.marker.version ? { type: "up_to_date", skill } : { type: "update", skill });
   }
   return actions;
 }
@@ -688,6 +728,17 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       results.push({ slug: action.skill.slug, version: action.skill.version, state: "up_to_date" });
       continue;
     }
+    if (action.type === "adopt") {
+      const { slug, version } = action.skill;
+      try {
+        adoptSkillDir(skillsRoot, slug, { ...action.marker, via: "grant", last_synced: now().toISOString() });
+        log(`skills/${slug}@${version} is now granted — the grant owns it from here`);
+      } catch (err) {
+        log(`could not rewrite the marker of skills/${slug}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      results.push({ slug, version, state: "up_to_date" });
+      continue;
+    }
     if (action.type === "collision") {
       const { slug, version } = action.skill;
       log(`skills/${slug} exists but is not Crustdata-managed — not overwriting`);
@@ -724,37 +775,163 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       continue;
     }
     const state = action.type === "update" ? "updated" : "installed";
-    try {
-      const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);
-      if (!download.ok) {
-        // Every failure path logs. `results` is discarded by the caller, so an unlogged
-        // failure is indistinguishable from "nothing to do" — the one outcome a user
-        // cannot diagnose.
-        log(`failed skills/${slug}@${version}: ${download.error}`);
-        results.push({ slug, version, state: "failed", error: download.error });
-        continue;
+    const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "grant", state, now, log });
+    if (outcome.ok) changed = true;
+    results.push(outcome.result);
+  }
+
+  // Pulled folders the sync set did not claim follow the catalog; an unreadable catalog leaves them alone.
+  const claimed = new Set(results.map((r) => r.slug));
+  const pulled = locals.filter((l) => isPulled(l.marker) && !claimed.has(l.dirName));
+  if (pulled.length > 0) {
+    const record = (r) => results.push({ ...r, via: "pull" });
+    const catalog = await readCatalog({ fetchImpl, base, apiKey, timeoutMs, log });
+    if (catalog.ok) {
+      for (const action of planPullRefresh(catalog.skills, pulled)) {
+        if (action.type === "up_to_date") {
+          record({ slug: action.skill.slug, version: action.skill.version, state: "up_to_date" });
+          continue;
+        }
+        if (action.type === "remove") {
+          try {
+            if (removeSkillDir(skillsRoot, action.slug)) {
+              changed = true;
+              log(`removed skills/${action.slug} (no longer in the catalog)`);
+              record({ slug: action.slug, version: action.marker.version, state: "removed" });
+            }
+          } catch (err) {
+            record({ slug: action.slug, version: action.marker.version, state: "failed", error: `remove failed: ${err instanceof Error ? err.message : String(err)}` });
+          }
+          continue;
+        }
+        const { slug, version } = action.skill;
+        if (clock() >= runDeadline) {
+          log(`time budget (${runBudgetMs}ms) reached — deferring skills/${slug} to the next session`);
+          record({ slug, version, state: "deferred" });
+          continue;
+        }
+        const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "pull", state: "updated", now, log });
+        if (outcome.ok) changed = true;
+        record(outcome.result);
       }
-      const extracted = extractSkillFiles(download.zip);
-      if (!extracted.ok) {
-        log(`failed skills/${slug}@${version}: ${extracted.error}`);
-        results.push({ slug, version, state: "failed", error: extracted.error });
-        continue;
-      }
-      installSkillAtomically({
-        skillsRoot,
-        slug,
-        files: extracted.files,
-        marker: { slug, version, managed_by: "crustdata", last_synced: now().toISOString() },
-      });
-      changed = true;
-      log(`${state} skills/${slug}@${version}`);
-      results.push({ slug, version, state });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log(`failed skills/${slug}@${version}: ${message}`);
-      results.push({ slug, version, state: "failed", error: message });
+    } else {
+      log(`${catalog.error} — leaving pulled skills untouched`);
     }
   }
 
   return { changed, results };
+}
+
+/** Download, verify, swap in under a `via` marker. `result.setup` names a shipped postinstall script. */
+async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via, state, now, log }) {
+  try {
+    const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);
+    if (!download.ok) {
+      // Every failure path logs. `results` is discarded by the hook, so an unlogged
+      // failure is indistinguishable from "nothing to do" — the one outcome a user
+      // cannot diagnose.
+      log(`failed skills/${slug}@${version}: ${download.error}`);
+      return { ok: false, result: { slug, version, state: "failed", error: download.error } };
+    }
+    const extracted = extractSkillFiles(download.zip);
+    if (!extracted.ok) {
+      log(`failed skills/${slug}@${version}: ${extracted.error}`);
+      return { ok: false, result: { slug, version, state: "failed", error: extracted.error } };
+    }
+    installSkillAtomically({
+      skillsRoot,
+      slug,
+      files: extracted.files,
+      marker: { slug, version, managed_by: "crustdata", via, last_synced: now().toISOString() },
+    });
+    log(`${state} skills/${slug}@${version}`);
+    const result = { slug, version, state };
+    if (extracted.files.some((f) => f.path === POSTINSTALL_PATH)) result.setup = POSTINSTALL_PATH;
+    return { ok: true, result };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`failed skills/${slug}@${version}: ${message}`);
+    return { ok: false, result: { slug, version, state: "failed", error: message } };
+  }
+}
+
+/** GET /skills/catalog reduced to safe slugs + version + access; names and descriptions never leave here. */
+export async function readCatalog({ fetchImpl, base, apiKey, timeoutMs, log = () => {} }) {
+  let res;
+  try {
+    res = await fetchJson(fetchImpl, `${base}/skills/catalog`, apiKey, timeoutMs);
+  } catch (err) {
+    const error = `catalog request failed (key ${maskKey(apiKey)}): ${err instanceof Error ? err.message : String(err)}`;
+    log(error);
+    return { ok: false, error };
+  }
+  if (res.status !== 200 || res.body === null || !Array.isArray(res.body.skills)) {
+    const type = res.body?.error?.type;
+    const detail = typeof type === "string" && NOTE_TOKEN.test(type) ? type : "unexpected response";
+    return { ok: false, error: `catalog did not return a usable skill set (status ${res.status}, ${detail})` };
+  }
+  const skills = [];
+  for (const entry of res.body.skills) {
+    if (entry === null || typeof entry !== "object") continue;
+    if (!isSafeSlug(entry.slug) || typeof entry.version !== "string" || entry.version === "") continue;
+    skills.push({ slug: entry.slug, version: entry.version, access: entry.access === "granted" ? "granted" : "available" });
+  }
+  return { ok: true, skills };
+}
+
+/** Rewrite a managed folder's marker; re-validated first (contract §4). */
+function adoptSkillDir(skillsRoot, slug, marker) {
+  const file = path.join(skillsRoot, slug, MARKER_FILENAME);
+  if (!isValidMarker(parseMarker(readFileSync(file, "utf8")), slug)) {
+    throw new Error(`skills/${slug} is no longer a Crustdata-managed folder`);
+  }
+  writeFileSync(file, JSON.stringify(marker, null, 2) + "\n", { mode: 0o644 });
+}
+
+/**
+ * `/crustdata:skills get <slug>`. Run runSync first: a grant is sync's to install. Returns
+ * { state, slug, version?, setup?, error? }, state one of
+ * invalid | no_key | bundled | granted | up_to_date | installed | updated | unavailable | failed.
+ */
+export async function pullSkill({ apiKey, baseUrl, pluginRoot, slug, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000 }) {
+  if (!isSafeSlug(slug)) return { state: "invalid", slug: "" };
+  if (typeof apiKey !== "string" || apiKey === "") return { state: "no_key", slug };
+  if (!isSecureBaseUrl(baseUrl)) {
+    log(`refusing to pull against a non-https base URL ${inNote(baseUrl)} — the API key would leak`);
+    return { state: "failed", slug, error: "non-https base URL refused" };
+  }
+  const base = String(baseUrl).replace(/\/+$/, "");
+  const skillsRoot = path.join(pluginRoot, "skills");
+  const local = readLocalSkills(skillsRoot).find((l) => l.dirName === slug);
+  if (local !== undefined && local.marker === null) return { state: "bundled", slug };
+  if (local !== undefined && !isPulled(local.marker)) return { state: "granted", slug, version: local.marker.version };
+
+  const catalog = await readCatalog({ fetchImpl, base, apiKey, timeoutMs, log });
+  if (!catalog.ok) return { state: "failed", slug, error: catalog.error };
+  const entry = catalog.skills.find((s) => s.slug === slug);
+  if (entry === undefined) return { state: "unavailable", slug };
+  if (local !== undefined && local.marker.version === entry.version) return { state: "up_to_date", slug, version: entry.version };
+
+  const outcome = await installFromServer({
+    fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version: entry.version, via: "pull",
+    state: local === undefined ? "installed" : "updated", now, log,
+  });
+  // Listed but not served: the same answer as unlisted, so nothing is guessed about access.
+  if (!outcome.ok && /\(status 404\)$/.test(outcome.result.error ?? "")) return { state: "unavailable", slug };
+  return outcome.result;
+}
+
+/** `/crustdata:skills drop <slug>`: pulled folders only. State: invalid | absent | bundled | granted | removed | failed. */
+export function dropSkill({ pluginRoot, slug }) {
+  if (!isSafeSlug(slug)) return { state: "invalid", slug: "" };
+  const skillsRoot = path.join(pluginRoot, "skills");
+  const local = readLocalSkills(skillsRoot).find((l) => l.dirName === slug);
+  if (local === undefined) return { state: "absent", slug };
+  if (local.marker === null) return { state: "bundled", slug };
+  if (!isPulled(local.marker)) return { state: "granted", slug, version: local.marker.version };
+  try {
+    return removeSkillDir(skillsRoot, slug) ? { state: "removed", slug, version: local.marker.version } : { state: "absent", slug };
+  } catch (err) {
+    return { state: "failed", slug, error: err instanceof Error ? err.message : String(err) };
+  }
 }
