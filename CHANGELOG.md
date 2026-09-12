@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.6.0
+
+- When the session-start sync installs, updates or removes a skill, Claude says so in one line at the start of its first reply. Until now the update was silent.
+- An updated skill that ships a `CHANGELOG.md` gets its entries for that update read out too.
+
 ## 1.5.0
 
 - `/crustdata:skills` lists what is installed on this machine and what else your account can have.

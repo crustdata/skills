@@ -90,6 +90,10 @@ export interface SyncResult {
   setup?: string;
   /** Set on results from the pulled-folder pass; absent on the granted set. */
   via?: "pull";
+  /** On an `updated` result: the version the folder held before this run. */
+  previous?: string;
+  /** On an `updated` result whose bundle ships a changelog: its absolute path on disk. */
+  changelog?: string;
 }
 
 export type PullState =
@@ -186,5 +190,8 @@ export declare function installSkillAtomically(args: {
 }): void;
 export declare function removeSkillDir(skillsRoot: string, slug: string): boolean;
 export declare function cleanupStaleDirs(skillsRoot: string): void;
-export declare function hookOutput(changed: boolean): string | null;
+export declare const CONTEXT_MAX_NAMED: number;
+export declare function versionDate(version: unknown): string | null;
+export declare function sessionStartContext(results: SyncResult[]): string | null;
+export declare function hookOutput(changed: boolean, results?: SyncResult[]): string | null;
 export declare function runSync(options: RunSyncOptions): Promise<{ changed: boolean; results: SyncResult[] }>;

@@ -581,13 +581,76 @@ export function cleanupStaleDirs(skillsRoot) {
 
 // ── hook output ──────────────────────────────────────────────────────────────
 
+/** How many changed skills the session-start note names before it says "and N more". */
+export const CONTEXT_MAX_NAMED = 10;
+
+/** A changelog at the skill root, however it is cased; what MCP v1's preamble also accepted. */
+const CHANGELOG_PATH = /^changelog(\.md)?$/i;
+
+/** Registry versions are the UTC publish instant, `YYYY.MM.DD.HHMMSS`; its date, or null. */
+export function versionDate(version) {
+  const m = /^(\d{4})\.(\d{2})\.(\d{2})\.\d{6}$/.exec(String(version ?? ""));
+  return m === null ? null : `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+/**
+ * The sentence Claude relays when a sync changed something. Only installed / updated /
+ * removed results count: a failure or a deferral is a stderr matter, not the user's. Every
+ * interpolated value is a machine token (NOTE_TOKEN) — the slugs already passed isSafeSlug
+ * and the versions come from the server, so a value that fails the check is dropped rather
+ * than handed to a model as prose. Returns null when nothing is worth saying.
+ */
+export function sessionStartContext(results) {
+  if (!Array.isArray(results)) return null;
+  const said = [];
+  /** One per named update that ships a changelog: where it is and which entries apply. */
+  const changelogs = [];
+  for (const r of results) {
+    if (r === null || typeof r !== "object") continue;
+    if (r.state !== "installed" && r.state !== "updated" && r.state !== "removed") continue;
+    if (!NOTE_TOKEN.test(String(r.slug ?? ""))) continue;
+    if (r.state === "removed") {
+      said.push(`removed ${r.slug}`);
+      continue;
+    }
+    const version = NOTE_TOKEN.test(String(r.version ?? "")) ? r.version : null;
+    const previous = r.state === "updated" && NOTE_TOKEN.test(String(r.previous ?? "")) ? r.previous : null;
+    const span = version === null ? "" : previous === null ? ` (${version})` : ` (${previous} → ${version})`;
+    said.push(`${r.state} ${r.slug}${span}`);
+    // The changelog path is ours (skillsRoot + slug + a name that matched CHANGELOG_PATH),
+    // never a server string; JSON-quoted so a path with spaces reads as one value.
+    if (r.state === "updated" && said.length <= CONTEXT_MAX_NAMED && typeof r.changelog === "string" && r.changelog !== "") {
+      const from = versionDate(previous);
+      const to = versionDate(version);
+      const which = from !== null && to !== null ? `dated after ${from} and up to ${to}` : "newer than the version it replaced";
+      changelogs.push(`${r.slug} ships a changelog at ${JSON.stringify(r.changelog)}: read it and, if it has entries ${which}, add what they say to that line, briefly.`);
+    }
+  }
+  if (said.length === 0) return null;
+  const named = said.slice(0, CONTEXT_MAX_NAMED);
+  const more = said.length - named.length;
+  const list = named.join("; ") + (more > 0 ? `; and ${more} more` : "");
+  return (
+    `Crustdata skills changed at session start: ${list}. ` +
+    "Tell the user this in one short line at the start of your first reply, then carry on with " +
+    "what they asked. " +
+    changelogs.map((c) => c + " ").join("") +
+    "Say nothing else about the sync."
+  );
+}
+
 /**
  * SessionStart output: emitted iff the local set changed (contract §4).
- * `reloadSkills` makes Claude re-scan the plugin skills dir in-session.
+ * `reloadSkills` makes Claude re-scan the plugin skills dir in-session;
+ * `additionalContext` is how the user hears about it — without it the update was silent,
+ * where the MCP v1 preamble used to announce every install.
  */
-export function hookOutput(changed) {
+export function hookOutput(changed, results = []) {
   if (!changed) return null;
-  return JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: true } });
+  const hookSpecificOutput = { hookEventName: "SessionStart", reloadSkills: true };
+  const additionalContext = sessionStartContext(results);
+  if (additionalContext !== null) hookSpecificOutput.additionalContext = additionalContext;
+  return JSON.stringify({ hookSpecificOutput });
 }
 
 // ── orchestrator ─────────────────────────────────────────────────────────────
@@ -716,6 +779,8 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
   const actions = planSync(sync.body.skills, locals);
   const results = [];
   let changed = false;
+  /** Version on disk before this run, by folder — the "from" half of an update. */
+  const localVersion = new Map(locals.filter((l) => l.marker !== null).map((l) => [l.dirName, l.marker.version]));
 
   for (const action of actions) {
     if (action.type === "invalid_entry") {
@@ -775,7 +840,7 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
       continue;
     }
     const state = action.type === "update" ? "updated" : "installed";
-    const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "grant", state, now, log });
+    const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "grant", state, previous: localVersion.get(slug), now, log });
     if (outcome.ok) changed = true;
     results.push(outcome.result);
   }
@@ -810,7 +875,7 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
           record({ slug, version, state: "deferred" });
           continue;
         }
-        const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "pull", state: "updated", now, log });
+        const outcome = await installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via: "pull", state: "updated", previous: localVersion.get(slug), now, log });
         if (outcome.ok) changed = true;
         record(outcome.result);
       }
@@ -823,7 +888,7 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
 }
 
 /** Download, verify, swap in under a `via` marker. `result.setup` names a shipped postinstall script. */
-async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via, state, now, log }) {
+async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via, state, previous, now, log }) {
   try {
     const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);
     if (!download.ok) {
@@ -847,6 +912,12 @@ async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoo
     log(`${state} skills/${slug}@${version}`);
     const result = { slug, version, state };
     if (extracted.files.some((f) => f.path === POSTINSTALL_PATH)) result.setup = POSTINSTALL_PATH;
+    if (state === "updated") {
+      // What the session-start note needs to say which changelog entries apply.
+      if (typeof previous === "string" && previous !== "") result.previous = previous;
+      const changelog = extracted.files.find((f) => CHANGELOG_PATH.test(f.path));
+      if (changelog !== undefined) result.changelog = path.join(skillsRoot, slug, changelog.path);
+    }
     return { ok: true, result };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

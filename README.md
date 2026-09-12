@@ -77,8 +77,7 @@ If you would rather not sign in at all, set `CRUSTDATA_API_KEY` in your environm
 
 ### Getting an update mid-session
 
-Your granted skills refresh on their own at the start of every session. If we ship a new
-version while you are working and you want it now:
+Your granted skills refresh on their own at the start of every session, and when one was installed, updated or removed, Claude tells you in its first reply, with the changelog entries for that update when the skill ships one. If we ship a new version while you are working and you want it now:
 
 ```
 /crustdata:skills sync

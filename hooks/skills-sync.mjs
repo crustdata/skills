@@ -47,7 +47,7 @@ export async function main() {
   }
   // No key → runSync no-ops (it treats an empty string exactly like the historical
   // no-key path), so an unconfigured install keeps its bundled skills and stays quiet.
-  const { changed } = await runSync({
+  const { changed, results } = await runSync({
     apiKey,
     baseUrl,
     pluginRoot,
@@ -56,7 +56,9 @@ export async function main() {
     // Nothing relays this one, and a bounded slug would hide the publish bug it exists to show.
     quote: (value) => JSON.stringify(String(value ?? "")).slice(0, 200),
   });
-  const out = hookOutput(changed);
+  // The JSON carries reloadSkills and, when something was installed, updated or removed,
+  // the one line Claude passes on to the user.
+  const out = hookOutput(changed, results);
   if (out !== null) process.stdout.write(out + "\n");
 }
 
