@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "name": "crustdata",
+  "displayName": "Crustdata",
+  "version": "1.7.0",
+  "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
+  "compat": {
+    "source": "native",
+    "manifestDir": ".muse-plugin"
+  },
+  "capabilities": {
+    "skills": [
+      {
+        "id": "account-research",
+        "path": "skills/account-research/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "candidate-sourcing",
+        "path": "skills/candidate-sourcing/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "email-enrichment",
+        "path": "skills/email-enrichment/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "icp-builder",
+        "path": "skills/icp-builder/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "meeting-prep",
+        "path": "skills/meeting-prep/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "sales-outreach",
+        "path": "skills/sales-outreach/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "sales-prospecting",
+        "path": "skills/sales-prospecting/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "warm-path-workspace",
+        "path": "skills/warm-path-workspace/SKILL.md",
+        "enabledDefault": true
+      }
+    ],
+    "commands": [],
+    "hooks": [],
+    "mcpServers": [
+      {
+        "id": "crustdata",
+        "transport": "http",
+        "url": "https://install.crustdata.com/mcp"
+      }
+    ],
+    "reminders": []
+  }
+}

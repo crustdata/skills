@@ -1,6 +1,6 @@
 # Crustdata Skills
 
-Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), [OpenAI Codex](https://developers.openai.com/codex), and [Grok Build](https://docs.x.ai/build), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
+Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://claude.ai/download), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/skills), [OpenAI Codex](https://developers.openai.com/codex), [Grok Build](https://docs.x.ai/build), and [Muse Code](https://dev.meta.ai/docs/muse-code), powered by [Crustdata](https://crustdata.com)'s real-time B2B data APIs. Each skill is a ready-to-use AI workflow for sales, recruiting, and growth tasks. No coding required.
 
 ## Skills
 
@@ -46,6 +46,27 @@ codex plugin add crustdata@crustdata-plugin
 
 Then start a new thread: Codex picks up a plugin's skills and tools at session start. Needs Codex 0.152 or newer. `/plugins` lists what is installed and `/skills` the skills it found; each one is also callable directly as `$crustdata:sales-prospecting`.
 
+### Muse Code
+
+Muse installs a plugin from a directory rather than a marketplace, so clone the bundle
+first. The management commands are behind an experimental flag; what they install runs
+without it.
+
+```bash
+git clone https://github.com/crustdata/skills
+MUSE_EXPERIMENTAL_PLUGINS=1 muse plugins install ./skills --scope user
+MUSE_EXPERIMENTAL_PLUGINS=1 muse plugins approve crustdata
+MUSE_EXPERIMENTAL_PLUGINS=1 muse plugins enable crustdata
+```
+
+`muse skills list --source plugin` shows what it picked up, and the connector comes with
+the plugin, so there is nothing to add separately.
+
+Verified on Muse 1.3.0; earlier builds install nothing and say nothing. Plugins also roll
+out per install, so if `muse plugins --help` says the command is not available in this
+build, yours does not have them yet whatever the version says. The subsystem is beta and
+the commands may change.
+
 ### Grok Build
 
 Not in the xAI plugin catalog yet, and Grok has no documented way to add a marketplace of
@@ -73,7 +94,7 @@ Your browser opens on Crustdata's authorization page. Sign in there, or paste an
 
 If you would rather not sign in at all, set `CRUSTDATA_API_KEY` in your environment instead; it takes precedence over anything `/crustdata:login` stores, so a scripted install keeps working untouched. Without either, the plugin's bundled skills still work and nothing else is installed.
 
-`/crustdata:login` is Claude only. On Grok, set `CRUSTDATA_API_KEY` — it is the only source there. Codex and Cursor read the bundled skills straight from the package and sync nothing, so neither needs a credential for this.
+`/crustdata:login` is Claude only. On Grok, set `CRUSTDATA_API_KEY` — it is the only source there. Codex, Cursor and Muse read the bundled skills straight from the package and sync nothing, so none of them needs a credential for this.
 
 ### Getting an update mid-session
 
@@ -117,6 +138,7 @@ Full reference in the [MCP docs](https://docs.crustdata.com/for-agents/mcp).
 .codex-plugin/    plugin manifest, for Codex
 .cursor-plugin/   plugin manifest, for Cursor
 .grok-plugin/     plugin manifest, for Grok Build
+.muse-plugin/     plugin manifest, for Muse Code — carries its own connector
 .agents/plugins/  marketplace catalog, for Codex
 .mcp.json         the Crustdata connector (Claude, Codex)
 .cursor-mcp.json  the Crustdata connector (Cursor)
@@ -130,7 +152,7 @@ scripts/          what those commands run
 tests/            plugin tests
 ```
 
-One bundle serves all three clients: the connector, the skills and every manifest ship together and always carry the same version.
+One bundle serves every client: the connector, the skills and every manifest ship together and always carry the same version.
 
 ## License
 
