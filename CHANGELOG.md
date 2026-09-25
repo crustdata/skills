@@ -2,6 +2,13 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.8.0
+
+- Skill sync runs in Claude Code only. Codex, Cursor, Grok and Muse read the bundled skills from
+  the package instead.
+- `/crustdata:login` and `/crustdata:skills` say so on those clients rather than storing a
+  credential nothing reads.
+
 ## 1.6.0
 
 - When the session-start sync installs, updates or removes a skill, Claude says so in one line at the start of its first reply. Until now the update was silent.

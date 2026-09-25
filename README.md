@@ -94,7 +94,7 @@ Your browser opens on Crustdata's authorization page. Sign in there, or paste an
 
 If you would rather not sign in at all, set `CRUSTDATA_API_KEY` in your environment instead; it takes precedence over anything `/crustdata:login` stores, so a scripted install keeps working untouched. Without either, the plugin's bundled skills still work and nothing else is installed.
 
-`/crustdata:login` is Claude only. On Grok, set `CRUSTDATA_API_KEY` — it is the only source there. Codex, Cursor and Muse read the bundled skills straight from the package and sync nothing, so none of them needs a credential for this.
+Skill sync is Claude only. Codex, Cursor, Grok and Muse read the bundled skills straight from the package and sync nothing, so none of them needs a credential for this.
 
 ### Getting an update mid-session
 

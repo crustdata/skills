@@ -5,6 +5,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { getAccessToken } from "../hooks/lib/credential-store.mjs";
+import { resolveSyncEnv } from "../hooks/lib/sync-env.mjs";
 import { runLogin } from "./crustdata-login.mjs";
 
 const LOGIN_HINT = "Not logged in — run /crustdata:login to connect Crustdata.";
@@ -20,12 +21,12 @@ function maskTail(secret) {
 async function main(cmd) {
   switch (cmd) {
     case "login": {
-      // Refuse on a client NAMED as another, never on the absence of Claude's own variable: a
-      // command's environment has no CLAUDE_PLUGIN_ROOT, so that test refused every Claude user.
-      // Elsewhere the sync hook ignores the store, so this would write a credential nothing reads.
-      if ((process.env.GROK_PLUGIN_ROOT ?? "").trim() !== "") {
+      // Refuse a client NAMED as another, never the absence of CLAUDE_PLUGIN_ROOT: a command's
+      // environment carries none, so that test refused every Claude user. The sync hook refuses
+      // the same clients, so a credential stored here would be read by nothing.
+      if ((await resolveSyncEnv()).client === "other") {
         process.stdout.write(
-          "Sign-in is available in Claude only. On this client, set CRUSTDATA_API_KEY in your environment to sync your skills.\n",
+          "Sign-in is available in Claude only. This client reads the bundled skills from the package.\n",
         );
         return 0;
       }

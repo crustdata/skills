@@ -1,20 +1,10 @@
 /**
- * Core logic of the Crustdata SessionStart skill-sync hook.
+ * Core logic of the Crustdata SessionStart skill-sync hook, against §2/§4 of the
+ * skills-registry contract.
  *
- * This file runs on the CLIENT (Claude Code CLI / Claude Desktop) with zero
- * runtime dependencies — Node built-ins only, no install step, no build step.
- * It is plain JavaScript on purpose; the sibling `.d.mts` carries the types so
- * the repo's TypeScript tests can import it without `allowJs`.
- *
- * The entry point (`skills-sync.mjs`) stays a thin shell around `runSync` so
- * everything here is testable with an injected `fetchImpl` and a temp dir —
- * no network, no real backend.
- *
- * Wire contract (docs/skills-registry-contract.md §2/§4):
- *   GET  /skills/sync                → the granted set, resolved to versions
- *   GET  /skills/:slug/content      → 302 to a presigned zip download (or the
- *                                      raw zip on the FS store); the hook
- *                                      downloads and unzips it itself
+ * Runs on the CLIENT with zero runtime dependencies: Node built-ins only, no install step and
+ * no build step. Plain JavaScript on purpose, with the types in the sibling `.d.mts` so the
+ * repo's TypeScript tests can import it without `allowJs`.
  */
 
 import { randomBytes } from "node:crypto";
@@ -30,9 +20,8 @@ import {
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 
-// CRC-32 (IEEE 802.3, poly 0xEDB88320) — the zip entry checksum. Hand-rolled so
-// the hook keeps its Node >=18 floor: node:zlib's `crc32` export only exists on
-// Node >=20.15/22.2, and this hook ships to client machines that may run 18.
+// CRC-32 (IEEE 802.3, poly 0xEDB88320), the zip entry checksum. Hand-rolled because node:zlib's
+// `crc32` export lands in 22.2, above the plugin's own Node 22 floor.
 const CRC32_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -55,10 +44,8 @@ export const TEMP_PREFIX = ".crustdata-tmp-";
 /** Displaced previous versions mid-swap; always safe to delete. */
 export const OLD_PREFIX = ".crustdata-old-";
 
-// Download/extraction budget — mirrors the server's publish-time caps
-// (src/skills/zip/validate.ts): 50MB zip, 200MB uncompressed total, 50MB per
-// file. A served artifact within publish limits always fits; anything larger
-// is refused client-side before it can balloon memory or disk.
+// Download/extraction budget, mirroring the registry's publish-time caps: 50MB zip, 200MB
+// uncompressed total, 50MB per file. Anything a served artifact can legitimately be fits.
 export const MAX_ZIP_BYTES = 50 * 1024 * 1024;
 export const MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024;
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -75,14 +62,10 @@ export function maskKey(key) {
 export const CANONICAL_BASE_ORIGIN = "https://skills.crustdata.com";
 
 /**
- * Gate the backend origin before we attach the bearer to a request: a hostile
- * CRUSTDATA_SKILLS_BASE_URL must not be able to forward the key to any origin (C3).
- *
- * Checking only the scheme never implemented that — every https host passed, so
- * anything able to set the env var could point the key at a server it controlled and
- * have the zip that server returned installed into the plugin's skills dir. The host
- * is pinned now, with loopback-http still allowed for the local e2e harness, which is
- * the only non-production use the variable is documented for.
+ * Pin the backend ORIGIN before the bearer is attached: a hostile CRUSTDATA_SKILLS_BASE_URL must
+ * not be able to forward the key anywhere, or to have the zip it answers with installed into the
+ * skills dir (C3). Do NOT loosen this back to a scheme check: every https host passed that one.
+ * Loopback http stays allowed for the local e2e harness, the only non-production use documented.
  */
 export function isSecureBaseUrl(s) {
   let u;
@@ -95,32 +78,28 @@ export function isSecureBaseUrl(s) {
   return u.protocol === "http:" && (u.hostname === "127.0.0.1" || u.hostname === "localhost" || u.hostname === "::1" || u.hostname === "[::1]");
 }
 
-// Aggregate wall-clock budget for one sync pass, kept safely under the hook's
-// 60s SessionStart timeout (hooks/hooks.json). N granted skills download
-// sequentially; without an aggregate cap a slow/large set would freeze session
-// start (C7). Skills past the budget are deferred to the next session.
+// Aggregate wall-clock budget for one sync pass, kept under the hook's 60s SessionStart
+// timeout in hooks/hooks.json. Skills past the budget are deferred to the next session.
 export const RUN_BUDGET_MS = 45_000;
 
 /**
- * A slug is used verbatim as a directory name under the plugin skills root, so
- * it must be a single safe path segment: alphanumeric start, then [a-z0-9._-].
- * Anything else from the server is refused client-side (defense in depth — the
- * backend validates slugs at publish too).
+ * A slug is used verbatim as a directory name under the skills root, so it must be one safe
+ * path segment. Refused client-side as well as at publish.
  */
 export function isSafeSlug(slug) {
   return typeof slug === "string" && /^[a-z0-9][a-z0-9._-]{0,127}$/i.test(slug);
 }
 
 /**
- * What may be interpolated into a LOG note. A note can become the single line
- * /crustdata:skills hands a model to relay verbatim, so anything outside our control has
- * to be a machine token there rather than prose. Deliberately tighter than isSafeSlug: it is
- * applied to values that already FAILED validation.
+ * What may be interpolated into a LOG note, which can become the line a model relays verbatim.
+ * Deliberately tighter than isSafeSlug: it is applied to values that already FAILED validation.
  */
 const NOTE_TOKEN = /^[a-z0-9_.-]{1,64}$/i;
 
-/** The default renderer. The SessionStart hook passes its own, because its log is never relayed
- *  and there the value IS the diagnostic — a slug with a slash is the publish bug you are hunting. */
+/**
+ * The default renderer. The SessionStart hook passes its own, because its log is never relayed and
+ * there the value IS the diagnostic — a slug with a slash is the publish bug you are hunting.
+ */
 export function inNote(value) {
   const s = String(value ?? "");
   return NOTE_TOKEN.test(s) ? `"${s}"` : "(unprintable)";
@@ -139,9 +118,9 @@ export function isSafeRelPath(p) {
   for (const seg of segments) {
     if (seg === "" || seg === "." || seg === "..") return false;
   }
-  // Reserve the marker name CASE-INSENSITIVELY: on a case-insensitive FS
-  // (APFS/NTFS) a served `.Crustdata-Lock` would otherwise land on top of our
-  // `.crustdata-lock` and impersonate the trust marker.
+  // Reserve the marker name CASE-INSENSITIVELY: on a case-insensitive FS (APFS/NTFS) a served
+  // `.Crustdata-Lock` would otherwise land on top of our `.crustdata-lock` and impersonate the
+  // trust marker.
   if (segments[0].toLowerCase() === MARKER_FILENAME.toLowerCase()) return false;
   return true;
 }
@@ -176,7 +155,10 @@ export function isValidMarker(marker, dirName) {
   return marker !== null && marker !== undefined && marker.slug === dirName;
 }
 
-/** Pulled with `/crustdata:skills get`: reconciled against the catalog, not the sync set. No `via` = grant. */
+/**
+ * Pulled with `/crustdata:skills get`: reconciled against the catalog, not the sync set. No `via` =
+ * grant.
+ */
 export function isPulled(marker) {
   return marker?.via === "pull";
 }
@@ -184,13 +166,10 @@ export function isPulled(marker) {
 /** Named for the person, never run. */
 export const POSTINSTALL_PATH = "scripts/postinstall.sh";
 
-// ── zip reader (ported from src/skills/zip/reader.ts) ───────────────────────
-// Minimal, dependency-free zip reader driven by the central directory. Scope is
-// deliberately narrow — the publish pipeline produces plain deterministic zips —
-// and everything outside that scope is REJECTED, not tolerated: encryption,
-// zip64, multi-disk archives, and compression methods other than stored/deflate.
-// Decompression is bounded via inflateRawSync's maxOutputLength, so a lying
-// size field can't balloon memory.
+// Minimal, dependency-free zip reader driven by the central directory. Scope is deliberately
+// narrow, and everything outside it is REJECTED rather than tolerated: encryption, zip64,
+// multi-disk archives, and compression methods other than stored/deflate. Decompression is
+// bounded via inflateRawSync's maxOutputLength, so a lying size field cannot balloon memory.
 
 const EOCD_SIG = 0x06054b50;
 const CD_SIG = 0x02014b50;
@@ -340,20 +319,11 @@ export function readLocalSkills(skillsRoot) {
 // ── reconcile plan (pure) ────────────────────────────────────────────────────
 
 /**
- * Compute the reconcile plan from the sync response and the local scan.
- * Pure: no I/O, fully unit-testable.
+ * Compute the reconcile plan from the sync response and the local scan. Pure: no I/O.
  *
- * Per remote skill (in response order):
- *   - malformed entry            → invalid_entry (skipped; suppresses removal)
- *   - folder present, no marker  → collision (needs_permission, never overwrite)
- *   - marker matches version     → up_to_date (no writes, no report)
- *   - has_postinstall            → postinstall_permission (needs_permission, no install)
- *   - no folder                  → install
- *   - marker version differs     → update
- * Then: every locally-managed folder not in the response → remove.
- *
- * Change-detection is by version string: a published (slug, version) is
- * immutable server-side, so a differing version is the only "update" signal.
+ * The branches below are in precedence order, and every locally-managed folder absent from the
+ * response is then a removal. Change detection is by version string alone: a published
+ * (slug, version) is immutable server-side, so a differing version is the only update signal.
  */
 export function planSync(remoteSkills, locals) {
   const actions = [];
@@ -368,8 +338,8 @@ export function planSync(remoteSkills, locals) {
       isSafeSlug(slug) &&
       typeof skill.version === "string" && skill.version !== "";
     if (!wellFormed) {
-      // A malformed entry must not cascade into deleting the local copy it
-      // failed to describe — hold the slug (when it is at least a string).
+      // A malformed entry must not cascade into deleting the local copy it failed to describe —
+      // hold the slug (when it is at least a string).
       if (typeof slug === "string") keep.add(slug);
       actions.push({ type: "invalid_entry", slug: typeof slug === "string" ? slug : "(unknown)" });
       continue;
@@ -389,8 +359,8 @@ export function planSync(remoteSkills, locals) {
       continue;
     }
     if (skill.has_postinstall === true) {
-      // A skill with a postinstall step never auto-runs it; we also never
-      // half-install a skill whose setup step didn't run (contract: needs_permission).
+      // A skill with a postinstall step never auto-runs it; we also never half-install a skill
+      // whose setup step didn't run (contract: needs_permission).
       actions.push({ type: "postinstall_permission", skill });
       continue;
     }
@@ -406,10 +376,7 @@ export function planSync(remoteSkills, locals) {
   return actions;
 }
 
-/**
- * Pulled folders against the catalog (pure): same version → up_to_date, other version → update,
- * not listed → remove. A malformed entry holds its slug, as in planSync.
- */
+/** Pulled folders against the catalog (pure). A malformed entry holds its slug, as in planSync. */
 export function planPullRefresh(catalogSkills, pulled) {
   const versions = new Map();
   const keep = new Set();
@@ -439,13 +406,9 @@ export function planPullRefresh(catalogSkills, pulled) {
 // ── zip extraction (path-validated) ──────────────────────────────────────────
 
 /**
- * Turn a downloaded skill zip into the verified file list the install machinery
- * writes. Every check failing aborts THIS skill only. Integrity here is
- * structural: each entry path must be safe to write under the skill folder,
- * symlinks are refused, and the publish-time size budget is re-enforced. There
- * is no server-provided hash to compare against — at-rest integrity is the
- * object store's checksum, in-flight is HTTPS, and this path validation is what
- * stands between served bytes and the local disk.
+ * Turn a downloaded skill zip into the verified file list the install machinery writes. Every
+ * check failing aborts THIS skill only. There is no server-provided hash to compare against, so
+ * this path validation is the whole of what stands between served bytes and the local disk.
  */
 export function extractSkillFiles(zip) {
   let entries;
@@ -479,11 +442,8 @@ export function extractSkillFiles(zip) {
 // ── filesystem: write, swap, remove ──────────────────────────────────────────
 
 /**
- * Write verified files under destDir. Every file is written 0o644 — the zip's
- * executable bit is deliberately NOT honored: a Claude skill is data (SKILL.md +
- * references), no bundled skill needs +x, and a served zip must not be able to
- * plant executable files in the plugin tree (least-privilege; C6/C18). destDir
- * must be a fresh staging dir.
+ * Every file is written 0o644: the zip's executable bit is deliberately NOT honored, so served
+ * bytes cannot plant an executable in the plugin tree. destDir must be a fresh staging dir.
  */
 export function writeSkillTree(destDir, files) {
   for (const file of files) {
@@ -494,11 +454,9 @@ export function writeSkillTree(destDir, files) {
 }
 
 /**
- * Stage-then-swap install. Files land in a sibling temp dir first (same
- * filesystem, so `rename` is atomic); the live folder is only ever replaced by
- * a COMPLETE, verified tree. Any failure cleans the staging dir and — for
- * updates — rolls the previous version back into place, so a partial write can
- * never leave a half-installed skill (contract §4).
+ * Stage-then-swap install: files land in a sibling temp dir on the same filesystem so `rename`
+ * is atomic, and the live folder is only ever replaced by a COMPLETE, verified tree. A failure
+ * cleans the staging dir and, for updates, rolls the previous version back (contract §4).
  */
 export function installSkillAtomically({ skillsRoot, slug, files, marker }) {
   mkdirSync(skillsRoot, { recursive: true });
@@ -509,9 +467,9 @@ export function installSkillAtomically({ skillsRoot, slug, files, marker }) {
     writeSkillTree(tmp, files);
     writeFileSync(path.join(tmp, MARKER_FILENAME), JSON.stringify(marker, null, 2) + "\n", { mode: 0o644 });
     if (existsSync(target)) {
-      // Re-validate the live folder's marker at WRITE time — the plan is up to a
-      // few seconds stale, and "never touch an unmanaged folder" (contract §4)
-      // must hold against a folder that stopped being ours between scan and now.
+      // Re-validate the live folder's marker at WRITE time — the plan is up to a few seconds stale,
+      // and "never touch an unmanaged folder" (contract §4) must hold against a folder that stopped
+      // being ours between scan and now.
       let liveMarker = null;
       try {
         liveMarker = parseMarker(readFileSync(path.join(target, MARKER_FILENAME), "utf8"));
@@ -541,9 +499,8 @@ export function installSkillAtomically({ skillsRoot, slug, files, marker }) {
 }
 
 /**
- * Remove a managed skill folder. The marker is re-validated at delete time so
- * we never `rm -rf` a folder that stopped being ours between scan and action.
- * Returns true when the folder was removed.
+ * Remove a managed skill folder. The marker is re-validated at delete time, so a folder that
+ * stopped being ours between scan and action is never `rm -rf`'d.
  */
 export function removeSkillDir(skillsRoot, slug) {
   if (!isSafeSlug(slug)) return false;
@@ -617,8 +574,8 @@ export function sessionStartContext(results) {
     const previous = r.state === "updated" && NOTE_TOKEN.test(String(r.previous ?? "")) ? r.previous : null;
     const span = version === null ? "" : previous === null ? ` (${version})` : ` (${previous} → ${version})`;
     said.push(`${r.state} ${r.slug}${span}`);
-    // The changelog path is ours (skillsRoot + slug + a name that matched CHANGELOG_PATH),
-    // never a server string; JSON-quoted so a path with spaces reads as one value.
+    // The changelog path is ours (skillsRoot + slug + a name that matched CHANGELOG_PATH), never a
+    // server string; JSON-quoted so a path with spaces reads as one value.
     if (r.state === "updated" && said.length <= CONTEXT_MAX_NAMED && typeof r.changelog === "string" && r.changelog !== "") {
       const from = versionDate(previous);
       const to = versionDate(version);
@@ -724,13 +681,9 @@ async function fetchZip(fetchImpl, url, apiKey, timeoutMs) {
 }
 
 /**
- * One full sync pass. Fail-closed and fail-soft: any error confines itself to
- * the affected skill (or to this run), never corrupts local state, and never
- * throws for per-skill problems. Only truly unexpected faults propagate — the
- * entry point catches those and still exits 0.
- *
- * Returns { changed, results }: `changed` is true iff a mutation (install /
- * update / remove) SUCCEEDED — the caller emits the reloadSkills signal from it.
+ * One full sync pass. Fail-closed and fail-soft: any error confines itself to the affected
+ * skill or to this run, never corrupts local state, and never throws for per-skill problems.
+ * `changed` is true only when a mutation SUCCEEDED, since the caller emits reloadSkills from it.
  */
 export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = () => {}, quote = inNote, now = () => new Date(), timeoutMs = 10_000, runBudgetMs = RUN_BUDGET_MS, clock = () => Date.now() }) {
   // No key → no identity → the sync is skipped entirely. Bundled base skills
@@ -831,9 +784,8 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
 
     // install | update — download the zip, extract with path validation, swap.
     const { slug, version } = action.skill;
-    // Stop starting new downloads once the aggregate budget is spent — the
-    // remaining skills sync on the next session start rather than risk freezing
-    // this one past the hook timeout (C7).
+    // Stop starting new downloads once the aggregate budget is spent — the remaining skills sync on
+    // the next session start rather than risk freezing this one past the hook timeout (C7).
     if (clock() >= runDeadline) {
       log(`time budget (${runBudgetMs}ms) reached — deferring skills/${slug} to the next session`);
       results.push({ slug, version, state: "deferred" });
@@ -845,7 +797,8 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
     results.push(outcome.result);
   }
 
-  // Pulled folders the sync set did not claim follow the catalog; an unreadable catalog leaves them alone.
+  // Pulled folders the sync set did not claim follow the catalog; an unreadable catalog leaves them
+  // alone.
   const claimed = new Set(results.map((r) => r.slug));
   const pulled = locals.filter((l) => isPulled(l.marker) && !claimed.has(l.dirName));
   if (pulled.length > 0) {
@@ -887,7 +840,10 @@ export async function runSync({ apiKey, baseUrl, pluginRoot, fetchImpl, log = ()
   return { changed, results };
 }
 
-/** Download, verify, swap in under a `via` marker. `result.setup` names a shipped postinstall script. */
+/**
+ * Download, verify, swap in under a `via` marker. `result.setup` names a shipped postinstall
+ * script.
+ */
 async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoot, slug, version, via, state, previous, now, log }) {
   try {
     const download = await fetchZip(fetchImpl, `${base}/skills/${encodeURIComponent(slug)}/content`, apiKey, timeoutMs);
@@ -926,7 +882,10 @@ async function installFromServer({ fetchImpl, base, apiKey, timeoutMs, skillsRoo
   }
 }
 
-/** GET /skills/catalog reduced to safe slugs + version + access; names and descriptions never leave here. */
+/**
+ * GET /skills/catalog reduced to safe slugs + version + access; names and descriptions never leave
+ * here.
+ */
 export async function readCatalog({ fetchImpl, base, apiKey, timeoutMs, log = () => {} }) {
   let res;
   try {
@@ -959,11 +918,7 @@ function adoptSkillDir(skillsRoot, slug, marker) {
   writeFileSync(file, JSON.stringify(marker, null, 2) + "\n", { mode: 0o644 });
 }
 
-/**
- * `/crustdata:skills get <slug>`. Run runSync first: a grant is sync's to install. Returns
- * { state, slug, version?, setup?, error? }, state one of
- * invalid | no_key | bundled | granted | up_to_date | installed | updated | unavailable | failed.
- */
+/** `/crustdata:skills get <slug>`. Runs runSync first: a grant is sync's to install. */
 export async function pullSkill({ apiKey, baseUrl, pluginRoot, slug, fetchImpl, log = () => {}, now = () => new Date(), timeoutMs = 10_000 }) {
   if (!isSafeSlug(slug)) return { state: "invalid", slug: "" };
   if (typeof apiKey !== "string" || apiKey === "") return { state: "no_key", slug };
@@ -992,7 +947,10 @@ export async function pullSkill({ apiKey, baseUrl, pluginRoot, slug, fetchImpl, 
   return outcome.result;
 }
 
-/** `/crustdata:skills drop <slug>`: pulled folders only. State: invalid | absent | bundled | granted | removed | failed. */
+/**
+ * `/crustdata:skills drop <slug>`: pulled folders only. State: invalid | absent | bundled | granted
+ * | removed | failed.
+ */
 export function dropSkill({ pluginRoot, slug }) {
   if (!isSafeSlug(slug)) return { state: "invalid", slug: "" };
   const skillsRoot = path.join(pluginRoot, "skills");

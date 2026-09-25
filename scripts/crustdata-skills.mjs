@@ -176,6 +176,10 @@ async function main() {
     return;
   }
   const { client, pluginRoot: envRoot, apiKey, baseUrl } = await resolveSyncEnv(process.env, { assumeClient: "claude" });
+  if (client === "other") {
+    out("Skill sync is available in Claude only. This client reads the bundled skills from the package.");
+    return;
+  }
   const pluginRoot = envRoot !== "" ? envRoot : OWN_ROOT;
 
   if (verb === "drop") {
