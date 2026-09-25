@@ -1,0 +1,45 @@
+{
+  "skill_name": "social-connections",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "who does https://www.linkedin.com/in/dvdhsu know? mostly I want to see which of those people work at Stripe or Figma today.",
+      "expected_output": "A tiered .xlsx of the people the target plausibly knows, each row with verbatim evidence and a current employer, plus a report that leads with the tier table and gives the Stripe and Figma counts from the by-employer pivot.",
+      "files": [],
+      "expectations": [
+        "run.json exists in the run directory with the target's name, linkedin_url, slug and person_id",
+        "Before the first gather agent or angle search runs, the reply to the user states the angle list, a cap per angle, and a projected credit total",
+        "Every row in final.json has at least one evidence item with non-empty text",
+        "No two rows in final.json share the same vanity slug or the same ACoAA member id",
+        "<slug>-connections.xlsx exists with tabs summary, all people, by employer, tier A, tier B, tier C and coverage",
+        "The final report gives a count for Stripe and a count for Figma, matching the by employer tab",
+        "The final report has a section listing what was not covered",
+        "No social_post_search call filters on a name column (actor.name, comments.name, reactors.name)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "map Satya Nadella's network from linkedin.com/in/satyanadella. I only want people who are clearly connected, so leave the weak matches out of the spreadsheet.",
+      "expected_output": "An exec-shaped angle set (leadership peers, board, investors, deal counterparties, press) rather than company-wide headcount, every oversized pool narrowed, and a workbook built without tier D.",
+      "files": [],
+      "expectations": [
+        "The angle list includes at least one of: leadership peers, board, investors, deal counterparties, press or web footprint",
+        "No angle searches the target's employer without a function, seniority, window or team constraint",
+        "Every angle whose count query returned more than 2,000 people has a log entry stating how it was narrowed",
+        "The workbook has no 'tier D (appendix)' tab, and its summary tab still reports the tier D count",
+        "Every social_post_search filter on a crustdata_entity_id is paired with an actor_type condition"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "who does https://www.linkedin.com/company/stripe know?",
+      "expected_output": "The skill recognises a company page, spends nothing, and asks for a person's LinkedIn profile URL instead.",
+      "files": [],
+      "expectations": [
+        "No person_search, person_enrich, social_post_list_live or social_post_search call is made",
+        "The reply asks for a person profile URL of the form linkedin.com/in/...",
+        "No run directory, final.json or .xlsx file is created"
+      ]
+    }
+  ]
+}
