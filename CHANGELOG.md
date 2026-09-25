@@ -2,6 +2,10 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.0
+
+- Bundles the **Social Connections** skill: see who a person knows from one LinkedIn URL, and why each name is on the list.
+
 ## 1.8.0
 
 - Skill sync runs in Claude Code only. Codex, Cursor, Grok and Muse read the bundled skills from

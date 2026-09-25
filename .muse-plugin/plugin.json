@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "crustdata",
   "displayName": "Crustdata",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
   "compat": {
     "source": "native",
@@ -43,6 +43,11 @@
       {
         "id": "sales-prospecting",
         "path": "skills/sales-prospecting/SKILL.md",
+        "enabledDefault": true
+      },
+      {
+        "id": "social-connections",
+        "path": "skills/social-connections/SKILL.md",
         "enabledDefault": true
       },
       {

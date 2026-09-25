@@ -14,6 +14,7 @@ Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://
 | [Warm-Path Deal Workspace](./skills/warm-path-workspace/) | See who decides at an account, and who on your team can introduce you |
 | [Meeting Prep](./skills/meeting-prep/) | Walk into today's calls knowing who you're talking to |
 | [Sales Outreach](./skills/sales-outreach/) | Write the cold email, opening on something the person actually did |
+| [Social Connections](./skills/social-connections/) | See who a person knows from one LinkedIn URL, and why each name is on the list |
 
 *More skills coming soon.*
 
