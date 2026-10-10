@@ -3,15 +3,19 @@ description: How to drive the Crustdata MCP server, and which Crustdata tool to 
 alwaysApply: false
 ---
 
-The Crustdata MCP server is Code Mode. It exposes three tools — `list_tools`, `get_schema`, `execute` — and every data operation happens inside an `execute` script:
+The Crustdata MCP server is Code Mode. It exposes `list_tools`, `get_schema` and `execute`, plus `feedback` (for reporting a problem with Crustdata's own data or tools) when it's listed. Every data operation happens inside an `execute` script:
 
 ```js
+// user query: <the user's request, in their words>
 const r = await callTool('person_search', { filters, limit: 25 });
-// r = { ok: true, data, credits_used } | { ok: false, status, errorType, message }
+// r = { ok: true, data, credits_used? } | { ok: false, status, errorType, message }
 ```
 
+- Start every `execute` script with a `// user query: <the user's request>` line, or `// model query: <what this run does>` for your own follow-up step. The server rejects a script without one before it runs, at no charge.
+- `list_tools`, `get_schema`, `execute` and `feedback` (when listed) are MCP tools: call them directly, never through `callTool`. Inside a script, `callTool('list_tools')` or `callTool('get_schema')` is rejected as an unknown tool. `callTool` only takes the names `list_tools` returns.
 - Write **plain JavaScript** for `execute` — any TypeScript syntax (`: Type`, `as`, generics) is a parse error that fails the whole run before anything is billed.
-- Call `get_schema(["<tool>"])` before building filters — it returns filterable columns, value formats, and a response example.
+- Call `get_schema({ names: ["<tool>"] })` before building filters: it returns filterable columns and value formats; add `detail: "detailed"` for the full column list and a response example.
+- `in_`, `nin_`, `any_of` and `has_all` take an array. Wrap a single value, as in `in_(field, ['OpenAI'])`; a bare string throws.
 - A failed `callTool` returns `{ ok: false, ... }`; it does not throw. Check `ok` before using `data`.
 
 Order of preference (cheapest correct path first):
@@ -23,9 +27,9 @@ Order of preference (cheapest correct path first):
 - Job listings: `job_search` (filters/sorts/aggregations, ~0.03 credits/result) or `job_search_live` (realtime scrape by company, 2 credits/result)
 - Social posts: `social_post_list_live` (posts by one person or company) or `social_post_search_live` (LinkedIn keyword search); for X/Twitter or Reddit use `web_search_live`
 - Web: `web_search_live` (1 credit/query) and `web_enrich_live` (fetch a page by URL, 1 credit/page)
-- Credits: `account_credits` (FREE) for the balance; every `callTool` result carries `credits_used` for the exact charge
+- Credits: `account_credits` (FREE) for the balance; a data-API tool's result carries `credits_used` for the exact charge of that call (other tools, such as `account_credits`, return none)
 - Discover valid filter values: `company_autocomplete`, `person_autocomplete`, `job_autocomplete` (FREE)
 - Bulk lists (thousands of rows): the async `batch_*` twins (`batch_person_enrich`, `batch_company_search`, …) — submit, poll `batch_job_get`, read via `batch_results`
-- Alerts: `watch_create` / `watch_discovery_create` (always preview with `watch_preview` first — the server refuses an unpreviewed create)
+- Alerts: `watch_create` / `watch_discovery_create`. Send the whole body with `preview: true` first (free, creates nothing), show the user what it found and what it will cost, then create it in a later `execute` run. The preview run returns `watch_preview_tokens`, a list of `{ tool, dataset, token, reported }`; pass the `token` of the entry whose `reported` matches the preview you showed as `preview_token`. The server refuses a create without that token, and refuses it inside the run that minted it. If you change the body after previewing, preview again. `watch_preview` only shows a sample notification and does not count.
 
 `list_tools` returns the full annotated tool list with per-tool pricing; trust it over this summary when they disagree.

@@ -2,6 +2,14 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.1
+
+- The Cursor rule now matches the server. It names `feedback`, and tells the agent to open
+  every script with `// user query:`, call `list_tools` and `get_schema` directly, pass
+  arrays to `in_`-style builders, and preview alerts with `preview: true`, not `watch_preview`.
+- The Cursor manifest no longer uses `..` in its MCP path, which Cursor's checklist rejects.
+- The Cursor Marketplace description now says what you can do: people and company search, enrichment, job postings, social posts and contact data.
+
 ## 1.10.0
 
 - Bundles the **Social Connections** skill: see who a person knows from one LinkedIn URL, and why each name is on the list.

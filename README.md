@@ -77,7 +77,7 @@ folder from `skills/` into `.grok/skills/`.
 
 ### Cursor
 
-Not on the Cursor Marketplace yet, so there is no one-click install. Add the connector on its own — see [Just the data, without the skills](#just-the-data-without-the-skills) below — and copy any skill folder you want from `skills/` into `.cursor/skills/` in your project. Cursor reads `SKILL.md` from there natively.
+Install the connector on its own for now: follow [Just the data, without the skills](#just-the-data-without-the-skills) below, then copy any skill folder you want from `skills/` into `.cursor/skills/` in your project. Cursor reads `SKILL.md` from there natively. The Cursor Marketplace listing currently installs an older build whose bundled rule names tools the server no longer serves.
 
 The plugin is pure Node with no native dependencies, and runs the same on macOS, Linux, Windows, and WSL. It needs Node 22 or newer on your `PATH`.
 
