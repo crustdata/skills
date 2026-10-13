@@ -2,6 +2,13 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.3
+
+- The `crustdata` MCP server points at `https://install.crustdata.com/mcp` again. The 1.10.2 entry
+  below was wrong: `https://install.crustdata.com/mcp` keeps serving Code Mode (`list_tools`,
+  `get_schema`, `execute`), and no typed-tool switch is coming. `https://install.crustdata.com/mcp/code`
+  serves the same Code Mode and keeps working, so 1.10.2 installs need no action.
+
 ## 1.10.2
 
 - The `crustdata` MCP server points at `https://install.crustdata.com/mcp/code`, the Code Mode
