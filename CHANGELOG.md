@@ -2,6 +2,12 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.2
+
+- The `crustdata` MCP server points at `https://install.crustdata.com/mcp/code`, the Code Mode
+  surface the bundled skills are written for. `https://install.crustdata.com/mcp` will serve one typed
+  tool per operation instead.
+
 ## 1.10.1
 
 - The Cursor rule now matches the server. It names `feedback`, and tells the agent to open

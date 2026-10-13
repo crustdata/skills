@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "crustdata",
   "displayName": "Crustdata",
-  "version": "1.10.1",
+  "version": "1.10.2",
   "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
   "compat": {
     "source": "native",
@@ -62,7 +62,7 @@
       {
         "id": "crustdata",
         "transport": "http",
-        "url": "https://install.crustdata.com/mcp"
+        "url": "https://install.crustdata.com/mcp/code"
       }
     ],
     "reminders": []
