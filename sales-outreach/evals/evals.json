@@ -1,0 +1,70 @@
+{
+  "skill_name": "sales-outreach",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find me 5 VP Engineering prospects at Series B SaaS companies with strong headcount growth. We're Rivela — we help engineering teams manage data pipelines at scale, cutting incident response time by 60%. My name is Sarah Chen, Head of Sales at Rivela. Draft cold emails for each.",
+      "expected_output": "A table of 5 companies with their growth signals, one verified VP Engineering contact per company, enriched emails, and 5 Gmail drafts created. Each draft opener references the specific headcount growth signal found for that company. A CSV tracker is written to the outputs folder.",
+      "files": [],
+      "expectations": [
+        "Asks clarifying questions if ICP details are missing before searching",
+        "Uses crustdata_company_enrich to score companies by headcount growth signals",
+        "Selects companies with QoQ headcount growth > 15% or recent funding as priority",
+        "Uses crustdata_people_search_db to find VP Engineering (not CEO) at each company",
+        "Batches crustdata_people_enrich calls with fields: name,business_email,personal_contact_info.personal_emails",
+        "Each email opener references a specific company signal (e.g. '38% headcount growth QoQ'), not a generic template",
+        "Does not use the same opener pattern twice across the 5 drafts",
+        "Creates Gmail drafts using gmail_create_draft for each prospect with a found email",
+        "Logs all prospects to a CSV tracker including those with no email found",
+        "Marks prospects without email as status: no_contact in the tracker"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to reach out to engineering leaders at companies that recently raised Series A or B. We sell developer tooling for observability. Target CTOs or VPs of Engineering at companies with 20–100 employees. Give me 5 prospects and draft emails. I'm Priya Nair, Founder at Optica.",
+      "expected_output": "Finds 5 recently funded companies (Series A/B in the last 6 months), identifies CTO or VP Engineering at each, enriches emails, and creates 5 Gmail drafts. Email openers reference the recent funding round as the trigger, not generic pain.",
+      "files": [],
+      "expectations": [
+        "Uses crustdata_web_search to discover recently funded Series A/B companies in the dev tools / engineering space",
+        "Uses crustdata_company_enrich to confirm funding stage and headcount range (20–100 employees)",
+        "Identifies CTO for companies under 50 employees, VP Engineering for companies 50–100",
+        "Uses crustdata_people_search_db with title filters to find the right person",
+        "Email openers reference the recent funding as a buying signal (e.g., 'Saw you raised Series A last month')",
+        "Falls back to GitHub commit history for technical contacts missing email after Crustdata enrichment",
+        "Creates Gmail drafts for all prospects with verified emails",
+        "Writes CSV tracker to outputs folder with company_signal column filled in for each row"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have a list of target companies: LinearB, Cortex, Swimlane, Rootly, FireHydrant. Find the Head of Engineering or VP Engineering at each, get their emails, and draft a personalized cold email for each. We're Signalfire (not the VC) — we help incident management teams reduce MTTR. I'm James Okafor, Account Executive.",
+      "expected_output": "Enriches each of the 5 named companies for growth signals, finds the right engineering leader at each, enriches emails, and creates 5 Gmail drafts. Each email opener is different and references something specific to that company.",
+      "files": [],
+      "expectations": [
+        "Uses crustdata_company_enrich on all 5 domains to pull growth signals before searching for contacts",
+        "Uses crustdata_people_search_db with company name and title filters to find Head/VP Engineering at each",
+        "Batches all 5 LinkedIn URLs into a single crustdata_people_enrich call",
+        "Identifies a unique signal per company from enrichment data (headcount growth, traffic, funding)",
+        "Each of the 5 email openers references a different signal — no two openers use the same template",
+        "Subject line follows [SenderCompany] x [TargetCompany] format or signal-based format",
+        "Creates Gmail drafts for all prospects with found emails",
+        "Logs status for all 5 to CSV tracker, including any where email was not found"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Find me data engineering or ML platform leads at AI startups in the US that have been growing fast. We sell vector database tooling. Target companies between 30–150 employees. I need 5 prospects. I'm Amir Hosseini, Founder at VectraDB.",
+      "expected_output": "Discovers 5 US-based AI startups with fast headcount or web traffic growth, finds the right ML/data engineering decision-maker (not always VP — could be Head of ML or Staff Data Engineer at smaller companies), enriches emails, and creates Gmail drafts referencing AI-specific growth signals.",
+      "files": [],
+      "expectations": [
+        "Uses crustdata_web_search to discover fast-growing US AI startups in the 30–150 employee range",
+        "Scores companies by headcount or web traffic growth signals",
+        "Identifies ML/Data/Platform leads rather than defaulting to VP Engineering — adjusts title search based on company size and domain",
+        "Uses crustdata_people_search_db with ML/Data/AI title keywords",
+        "Each email opener is specific to the company's growth signal and relevant to vector DB pain (e.g. 'scaling embedding workloads')",
+        "Batches email enrichment across all 5 contacts",
+        "Creates Gmail drafts and logs to CSV tracker"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+{
+  "skill_name": "sales-outreach",
+  "description": "Evals covering the key failure modes and correctness checks for the B2B sales outreach pipeline: company signal discovery, decision-maker targeting, email enrichment, personalized copy, and Gmail draft creation.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "opener-must-reference-specific-signal",
+      "category": "outreach_quality",
+      "prompt": "Find 3 VP Engineering prospects at Series B SaaS companies with strong headcount growth. We're Rivela — we help engineering teams manage data pipelines at scale. I'm Sarah Chen, Head of Sales. Draft cold emails.",
+      "expected_output": "Each email opener must reference a specific growth signal found for that company (e.g., '38% headcount growth QoQ', 'raised Series B last month') — not a generic pain point like 'companies your size often struggle with data infra'. No two openers should use the same template.",
+      "assertions": [
+        {
+          "text": "No opener uses generic pain-point framing without a specific company signal",
+          "type": "negative_pattern",
+          "pattern": "(companies (your|at your) (size|stage) (often|typically|usually|tend to)|as (a|the) (VP|Head|CTO|Director), you (probably|likely|might))"
+        },
+        {
+          "text": "Each opener references a quantified or named signal (%, funding round, company name)",
+          "type": "semantic",
+          "description": "At least one of: percentage figure, funding round mention, or company-specific named event in each opener"
+        },
+        {
+          "text": "No two email openers use the same sentence structure",
+          "type": "semantic",
+          "description": "Each of the 3 drafts should have a distinct opener — not the same template with different company names swapped in"
+        }
+      ],
+      "failure_story": "Early runs produced openers like 'Companies at your stage often struggle with data pipeline reliability' — indistinguishable from a mail merge. The fix: pull a specific signal per company from crustdata_company_enrich (QoQ headcount growth, recent funding) and reference it directly. Generic openers get ignored; signal-based openers get replies."
+    },
+    {
+      "id": 2,
+      "name": "company-enrich-before-prospecting",
+      "category": "pipeline_correctness",
+      "prompt": "I want to reach out to engineering leaders at Pipebird, Airbyte, and Sequin. We sell observability tooling for data pipelines. Get their VP Engineering contacts and draft cold emails. I'm James Okafor, AE at Optica.",
+      "expected_output": "crustdata_company_enrich must be called on all 3 companies BEFORE searching for people. The enrichment data (headcount growth, funding, web traffic) should be used to identify the specific trigger for each email opener.",
+      "assertions": [
+        {
+          "text": "crustdata_company_enrich is called before crustdata_people_search_db",
+          "type": "tool_usage_order",
+          "first": "crustdata_company_enrich",
+          "then": "crustdata_people_search_db"
+        },
+        {
+          "text": "Headcount growth or funding data from enrichment is referenced in the email opener",
+          "type": "semantic",
+          "description": "The signal pulled from crustdata_company_enrich (e.g., growth %, recent round) must appear in the corresponding draft"
+        },
+        {
+          "text": "All 3 companies are enriched before any people search begins",
+          "type": "semantic",
+          "description": "Company enrichment for all targets should complete in one phase, not interleaved with people search"
+        }
+      ],
+      "failure_story": "Without enriching companies first, the pipeline falls back to generic openers — it has no signal to reference. Enriching after people search means writing emails without knowing what to say. The correct order is: company signals first → decision-maker search → email copy using signals."
+    },
+    {
+      "id": 3,
+      "name": "linkedin-url-never-guessed",
+      "category": "linkedin_verification",
+      "prompt": "Find the VP Engineering at LinearB (engineering analytics company) and draft a cold outreach email for our developer tooling product.",
+      "expected_output": "LinkedIn URL for the VP Engineering contact should be fetched from crustdata_people_search_db using the flagship_profile_url field — never constructed from name patterns like 'firstname-lastname' or 'firstname-lastname-linearb'.",
+      "assertions": [
+        {
+          "text": "LinkedIn URL comes from crustdata_people_search_db flagship_profile_url, not constructed",
+          "type": "tool_usage",
+          "required_tools": ["crustdata_people_search_db"]
+        },
+        {
+          "text": "No LinkedIn URL contains company name as suffix",
+          "type": "negative_pattern",
+          "pattern": "linkedin\\.com/in/[a-z-]+(linearb|airbyte|sequin|pipebird)"
+        },
+        {
+          "text": "All LinkedIn URLs use the full https://www.linkedin.com/in/ prefix",
+          "type": "pattern",
+          "pattern": "^https://www\\.linkedin\\.com/in/"
+        }
+      ],
+      "failure_story": "Guessed LinkedIn slugs like 'john-smith-linearb' or 'john-smith-ny' frequently 404 or point to the wrong person. Real slugs are auto-generated (e.g., 'john-smith-4a2b091c'). Always use Crustdata's verified flagship_profile_url."
+    },
+    {
+      "id": 4,
+      "name": "title-targeting-by-company-size",
+      "category": "decision_maker_targeting",
+      "prompt": "I want to reach 3 prospects who own data infrastructure decisions. Target companies: Rootly (incident management, ~40 employees), Cortex (developer portal, ~80 employees), PagerDuty (incident management, ~900 employees). Find the right contact at each.",
+      "expected_output": "For Rootly (~40 employees), the CTO or a hands-on engineering lead is the right target — not VP Engineering. For Cortex (~80 employees), VP Engineering or Head of Engineering. For PagerDuty (~900 employees), VP Engineering or Director of Platform Engineering. Company size should drive title targeting.",
+      "assertions": [
+        {
+          "text": "For companies under 50 employees, targets CTO or Head of Engineering, not VP Engineering",
+          "type": "semantic",
+          "description": "Rootly at ~40 employees — the search should use CTO or Head of Engineering title patterns, not VP Engineering"
+        },
+        {
+          "text": "For companies over 500 employees, targets director-level or above for infrastructure decisions",
+          "type": "semantic",
+          "description": "PagerDuty at ~900 employees — the search should target VP or Director, not individual contributors"
+        },
+        {
+          "text": "crustdata_people_search_db title filter adapts based on company headcount from enrichment",
+          "type": "semantic",
+          "description": "Title targeting logic uses company size data, not a fixed title across all companies"
+        }
+      ],
+      "failure_story": "Sending a cold email to a VP Engineering at a 30-person startup is fine. Sending the same email to a VP Engineering at a 1000-person company often misses the decision-maker — at scale, infra decisions are owned by Directors or department heads. Size-based title targeting increases reply rates."
+    },
+    {
+      "id": 5,
+      "name": "batch-email-enrichment-single-call",
+      "category": "technical_robustness",
+      "prompt": "I have 8 verified LinkedIn URLs for VP Engineering prospects. Enrich all of them for business and personal emails in one go.",
+      "expected_output": "All 8 LinkedIn URLs should be passed to a single crustdata_people_enrich call with fields: 'name,business_email,personal_contact_info.personal_emails' — not 8 separate calls.",
+      "assertions": [
+        {
+          "text": "All LinkedIn URLs are batched into a single crustdata_people_enrich call",
+          "type": "semantic",
+          "description": "One API call with all URLs, not individual calls per prospect"
+        },
+        {
+          "text": "fields parameter includes both business_email and personal_contact_info.personal_emails",
+          "type": "semantic",
+          "description": "Both email types are requested in the same enrichment call to avoid a second round-trip"
+        },
+        {
+          "text": "No separate second enrichment call is made for personal emails if the first call included them",
+          "type": "semantic",
+          "description": "Combining both field requests in one call is the correct pattern — no follow-up personal-email-only call"
+        }
+      ],
+      "failure_story": "Early versions of the pipeline made one crustdata_people_enrich call for business emails, then a second call for personal emails. Since both can be requested in the same call via the fields parameter, the double-call pattern wastes API credits and doubles latency unnecessarily."
+    },
+    {
+      "id": 6,
+      "name": "personal-email-preferred-over-business",
+      "category": "email_enrichment",
+      "prompt": "We have both business and personal emails for these 3 prospects. Which should we use for the Gmail drafts? Prospect A: business john@acme.com, personal john.smith@gmail.com. Prospect B: business sarah@corp.com, no personal found. Prospect C: no business, personal ravi.k@protonmail.com.",
+      "expected_output": "Prospect A: use personal Gmail (higher response rate, less likely to hit spam filters). Prospect B: use business email (only option). Prospect C: use personal ProtonMail. The skill should prefer personal email over business email for cold outreach when both are available.",
+      "assertions": [
+        {
+          "text": "Personal email is used over business email when both are available",
+          "type": "semantic",
+          "description": "Gmail drafts for Prospect A should use john.smith@gmail.com, not john@acme.com"
+        },
+        {
+          "text": "Business email is used as fallback when no personal email is found",
+          "type": "semantic",
+          "description": "Prospect B draft should use sarah@corp.com since no personal email exists"
+        },
+        {
+          "text": "Tracker notes the email type used (personal vs business) for each prospect",
+          "type": "semantic",
+          "description": "The email_type column in the CSV tracker should reflect which type was chosen and why"
+        }
+      ],
+      "failure_story": "Business emails routed through corporate spam filters often never reach the recipient. Personal emails (Gmail, ProtonMail) go directly to the person's inbox. When both exist, personal email consistently outperforms on reply rate for cold outreach."
+    },
+    {
+      "id": 7,
+      "name": "gmail-draft-not-send",
+      "category": "pipeline_correctness",
+      "prompt": "I found 5 VP Engineering prospects with verified emails. Write the outreach and send the emails to them now.",
+      "expected_output": "Should create Gmail DRAFTS using gmail_create_draft, not attempt to send. Should explicitly tell the user the drafts are ready in their Gmail for review and manual sending.",
+      "assertions": [
+        {
+          "text": "Uses gmail_create_draft, not any send tool",
+          "type": "tool_usage",
+          "required_tools": ["gmail_create_draft"],
+          "forbidden_tools": ["gmail_send"]
+        },
+        {
+          "text": "Explicitly informs user that drafts require manual review before sending",
+          "type": "semantic",
+          "description": "Output includes language like 'drafts are ready in Gmail for your review' — not 'emails have been sent'"
+        }
+      ],
+      "failure_story": "Gmail MCP only supports draft creation, not sending. More importantly, cold outreach should always be reviewed before sending — tone, accuracy of the signal reference, and sender context all need a human check. Drafts are the correct terminal state."
+    },
+    {
+      "id": 8,
+      "name": "tracker-csv-all-fields-populated",
+      "category": "pipeline_correctness",
+      "prompt": "Run the full sales outreach pipeline for 3 VP Engineering prospects at fast-growing SaaS companies. We sell API monitoring tooling. I'm Priya Nair, Founder at Optica.",
+      "expected_output": "After creating Gmail drafts, all 3 prospects should be logged to a CSV tracker with every column populated: date, icp_description, prospect_name, prospect_title, company, company_signal, linkedin_url, email, email_type, subject, message_opener, status (drafted), notes, message_body.",
+      "assertions": [
+        {
+          "text": "CSV tracker is created with all required column headers",
+          "type": "semantic",
+          "description": "Headers must include: date, icp_description, prospect_name, prospect_title, company, company_signal, linkedin_url, email, email_type, subject, message_opener, status, notes, message_body"
+        },
+        {
+          "text": "company_signal column is filled with the specific signal used for each prospect",
+          "type": "semantic",
+          "description": "Not left blank — the actual signal (e.g., '35% QoQ headcount growth') should be recorded per row"
+        },
+        {
+          "text": "Status is set to 'drafted' for all prospects with created Gmail drafts",
+          "type": "output_contains",
+          "value": "drafted"
+        },
+        {
+          "text": "Prospects with no email found are logged with status 'no_contact'",
+          "type": "semantic",
+          "description": "Even when email enrichment fails, the prospect row is still logged so the user can follow up manually"
+        }
+      ],
+      "failure_story": "Without a tracker, there is no record of who was contacted, what signal was used, or what the message said. This makes follow-up impossible and risks re-contacting the same person with a different message."
+    },
+    {
+      "id": 9,
+      "name": "no-contact-logged-for-missing-email",
+      "category": "pipeline_correctness",
+      "prompt": "Find 5 VP Engineering prospects at developer tooling companies. Run the full pipeline including email enrichment. Some may not have emails available.",
+      "expected_output": "For every prospect where email enrichment fails after the full chain (Crustdata business + personal, GitHub commits, web search fallbacks), the prospect should still be logged to the tracker with status 'no_contact' and a note explaining what was tried. No prospect should be silently dropped.",
+      "assertions": [
+        {
+          "text": "Prospects without email are logged to CSV with status 'no_contact'",
+          "type": "semantic",
+          "description": "Missing email does not mean the row is skipped — it gets logged with no_contact status"
+        },
+        {
+          "text": "Notes column records what enrichment methods were attempted for no_contact rows",
+          "type": "semantic",
+          "description": "e.g., 'Tried Crustdata enrichment (no result), GitHub (no public profile found), web search (no match)'"
+        },
+        {
+          "text": "Gmail draft is not created for no_contact prospects",
+          "type": "semantic",
+          "description": "gmail_create_draft should only be called for prospects with a verified email"
+        }
+      ],
+      "failure_story": "Silently dropping prospects with no email means the user loses visibility into their pipeline. If 3 out of 10 targets couldn't be reached, the user should know — they may have other ways to reach those contacts (conference, mutual connection, LinkedIn DM)."
+    },
+    {
+      "id": 10,
+      "name": "large-api-response-parsed-with-python",
+      "category": "technical_robustness",
+      "prompt": "Enrich 20 companies with crustdata_company_enrich to find growth signals for my ICP targeting.",
+      "expected_output": "When the API response exceeds token limits and is saved to a file, the skill should use Python to parse the saved file using the correct nested structure — not try to process it inline or fail silently.",
+      "assertions": [
+        {
+          "text": "Large company enrich responses are parsed with Python when saved to file",
+          "type": "semantic",
+          "description": "Uses json.load to read the saved file, then json.loads(data[0]['text']) to get the inner payload"
+        },
+        {
+          "text": "Headcount growth fields are correctly navigated from the parsed response",
+          "type": "semantic",
+          "description": "Accesses headcount_latest.linkedin_headcount_total_growth_percent.3_months and .1_month correctly"
+        }
+      ],
+      "failure_story": "Crustdata company enrichment for 20 companies produces a large JSON response that gets saved to a temp file. The saved file wraps the actual payload in a JSON array: data[0]['text'] is a JSON string containing the real content. Without knowing this structure, parsing fails and the growth signal data is lost."
+    },
+    {
+      "id": 11,
+      "name": "funding-signal-triggers-right-message",
+      "category": "outreach_quality",
+      "prompt": "We sell developer observability tools. Find companies that raised Series A or B in the last 3 months in the SaaS space. Find their VP Engineering and draft outreach. I'm Amir Hosseini, Founder at VectraDB.",
+      "expected_output": "Email openers should reference the recent funding as the trigger — and connect it to why now is the right time for the product. Should not just say 'Congrats on your funding' — should explain why that funding event makes the product relevant.",
+      "assertions": [
+        {
+          "text": "Funding signal from enrichment is used in the opener, not just generic congratulations",
+          "type": "negative_pattern",
+          "pattern": "^(Congrats|Congratulations) on (your|the) (recent |)funding[.!]"
+        },
+        {
+          "text": "Opener connects the funding event to a specific consequence that makes the product relevant",
+          "type": "semantic",
+          "description": "e.g., 'Saw you raised Series A last month — that's usually when teams start buying infra tooling they've been deferring' — not just a congratulations"
+        },
+        {
+          "text": "Uses crustdata_company_enrich funding fields to identify recency of the raise",
+          "type": "tool_usage",
+          "required_tools": ["crustdata_company_enrich"]
+        }
+      ],
+      "failure_story": "Opening with 'Congratulations on your funding!' is the most overused cold email opener in B2B sales. It signals mass outreach. The right approach: acknowledge the funding, then explain the specific implication that makes your product timely — 'new budget, new tooling decisions, compressed timeline to show ROI'."
+    },
+    {
+      "id": 12,
+      "name": "web-search-fallback-for-company-discovery",
+      "category": "pipeline_correctness",
+      "prompt": "I don't have a target company list. Find me 5 fast-growing US-based B2B SaaS startups in the developer tooling space with 30–100 employees. Then find VP Engineering at each and draft cold emails.",
+      "expected_output": "When no company list is provided, crustdata_web_search should be used to discover candidate companies, then crustdata_company_enrich to score them by growth signals. The 5 companies selected should all match the headcount range and show at least one growth signal.",
+      "assertions": [
+        {
+          "text": "Uses crustdata_web_search for initial company discovery when no list is provided",
+          "type": "tool_usage",
+          "required_tools": ["crustdata_web_search"]
+        },
+        {
+          "text": "Follows up discovery with crustdata_company_enrich to validate headcount and growth signals",
+          "type": "tool_usage_order",
+          "first": "crustdata_web_search",
+          "then": "crustdata_company_enrich"
+        },
+        {
+          "text": "Selected companies fall within 30–100 employee range based on enrichment data",
+          "type": "semantic",
+          "description": "Companies outside the requested headcount range should be filtered out after enrichment"
+        },
+        {
+          "text": "Each selected company has at least one growth signal documented before proceeding to people search",
+          "type": "semantic",
+          "description": "Companies with no visible growth signals should not be included — they lack an opener trigger"
+        }
+      ],
+      "failure_story": "Without a company list, the pipeline needs to discover targets from scratch. Skipping crustdata_company_enrich after discovery means selecting companies with no signal — resulting in generic openers and lower reply rates. Always validate company signals before investing in people search and email copy."
+    }
+  ]
+}
