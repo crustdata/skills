@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.5
+
+- Wording updates in the bundled Candidate Sourcing, Email Enrichment and Social Connections
+  skills. Tools and inputs are unchanged.
+
 ## 1.10.4
 
 - Wording updates in the Cursor rule and several bundled skills, including a few Warm-Path
