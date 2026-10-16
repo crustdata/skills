@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.4
+
+- Wording updates in the Cursor rule and several bundled skills, including a few Warm-Path
+  Deal Workspace labels and the Social Connections sheet title. Tools and inputs are unchanged.
+
 ## 1.10.3
 
 - The `crustdata` MCP server points at `https://install.crustdata.com/mcp` again. The 1.10.2 entry
