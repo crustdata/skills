@@ -83,9 +83,10 @@ No direct tie, so the referral has to cross an org layer. That layer gets a real
 
 ## Resolving the named intermediaries
 
-The honest constraint: **LinkedIn and Crustdata do not expose reporting lines.** Nobody can
-tell you that Olivia's manager is Sam and Sam's skip is Priya. Inventing those names would be
-fabrication, and it is the fastest way to get an operator to send an embarrassing email.
+The honest constraint: **Crustdata does not expose reporting lines, and profiles do not list a
+manager.** Nobody can tell you that Olivia's manager is Sam and Sam's skip is Priya. Inventing
+those names would be fabrication, and it is the fastest way to get an operator to send an
+embarrassing email.
 
 What you *can* do is name a real person who genuinely sits in the org layer the referral must
 cross, and say exactly why they qualify. That is what the INTERNAL PATH column shows.

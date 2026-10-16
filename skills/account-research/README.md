@@ -7,7 +7,7 @@ Know a company completely before you sell to it: a full account plan, an org cha
 Four research modes, one ask each:
 
 - **Account deep-dive & plan** — firmographics, headcount growth, funding, last-90-days news, open roles, what the company is posting about, and who runs the function you sell to. If your CRM, call recorder, team chat, or email are connected, it also sweeps your own history with the account (read-only) and folds it into the plan.
-- **Org chart** — who runs the company and who reports to whom, rendered as a standalone HTML chart with photos, names, clean titles, and LinkedIn links.
+- **Org chart** — who runs the company and who reports to whom, rendered as a standalone HTML chart with photos, names, clean titles, and profile links.
 - **Tech stack & wedge** — what tools they run today, a confidence tag on each item, and the single best opening for what you sell.
 - **Competitive battlecard** — a competitor's real strengths, their gaps, discovery questions that expose those gaps, and responses to the objections you'll hear.
 
@@ -25,7 +25,7 @@ Works standalone: if you haven't defined your ICP yet, it asks two quick questio
 | One-line read | Acme is a 412-person cloud data-integration platform scaling into enterprise after its March Series C — the stage where pipeline data quality breaks first |
 | Signals | Headcount +18% in 12 months · $85M Series C (Mar 2026) · 34 open engineering roles, 9 mentioning "data pipeline" — every claim with a source link |
 | Why we win | 9 pipeline-heavy job posts plus a public incident postmortem, and no data-quality tooling named anywhere: growing surface, no owner |
-| Who to talk to | Priya Raman, VP Data Platform (champion hypothesis) · Marcus Webb, CTO (economic buyer) — with LinkedIn profiles |
+| Who to talk to | Priya Raman, VP Data Platform (champion hypothesis) · Marcus Webb, CTO (economic buyer) — with profile links |
 | Our history | Two 2025 email threads with their platform team; a stalled-eval note in the CRM (pulled from your connected tools, if any) |
 | Entry play + risks | Open with the postmortem angle via Priya; risk: their observability vendor is expanding into quality checks |
 | Next steps | Aug 7: intro note to Priya · Aug 14: postmortem teardown follow-up · Sep 4: exec brief for Marcus |

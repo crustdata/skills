@@ -448,7 +448,7 @@ function mountDossier(DOSSIER){
   var econTotal=S.filter(function(s){return s.deal_role==='Economic Buyer';}).length;
   var statData=[
     ['Stakeholders mapped', S.length],
-    ['LinkedIn posts analyzed', totalPosts.toLocaleString()],
+    ['Posts analyzed', totalPosts.toLocaleString()],
     ['Warm paths', warmN+(strongWarm?(' · '+strongWarm+' strong'):'')],
     ['Live signals', (DOSSIER.signals||[]).length],
     ['Econ buyers engaged', econTotal?(econEngaged+'/'+econTotal):'—']
@@ -614,7 +614,7 @@ function mountDossier(DOSSIER){
     }
     if(s.linkedin_summary){
       var cl=el('div','card-lisum');
-      cl.appendChild(el('div','cl-lab',licon('file-text',11)+' LinkedIn read'+(s.posts_analyzed?(' · '+s.posts_analyzed+' posts'):'')));
+      cl.appendChild(el('div','cl-lab',licon('file-text',11)+' Activity read'+(s.posts_analyzed?(' · '+s.posts_analyzed+' posts'):'')));
       cl.appendChild(el('div','cl-txt',esc(s.linkedin_summary)));c.appendChild(cl);
     }
     var b=el('div','badges');
@@ -650,7 +650,7 @@ function mountDossier(DOSSIER){
     if(s.summary){H('Summary');var sm=el('div');sm.appendChild(el('div',null,'<div style="font-size:14px;line-height:1.55">'+esc(s.summary)+'</div>'));attachEvidence(sm,s.summary_evidence);b.appendChild(sm);}
 
     if(s.linkedin_summary){
-      H('LinkedIn deep dive');
+      H('Activity deep dive');
       var ls=el('div','lisum',esc(s.linkedin_summary));
       var lmeta=el('div','li-meta');
       if(s.posts_analyzed)lmeta.appendChild(el('span',null,licon('file-text',11)+' '+s.posts_analyzed+' posts analyzed'));

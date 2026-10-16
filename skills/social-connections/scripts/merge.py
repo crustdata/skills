@@ -91,7 +91,7 @@ def urn_of(url, urn):
 def slug_of(url):
     m = re.search(r"linkedin\.com/in/([^/?#]+)", url or "", re.I)
     slug = unicodedata.normalize("NFC", unquote(m.group(1))).strip() if m else ""
-    # member and Sales Navigator ids are case-sensitive ids, not vanity slugs
+    # urn-style ids (ACoAA..., ACwAA...) are case-sensitive, not vanity slugs
     return "" if slug.lower().startswith(("acoaa", "acwaa")) else slug.lower()
 
 

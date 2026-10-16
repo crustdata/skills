@@ -33,7 +33,7 @@
     {
       "id": 3,
       "prompt": "Build me an org chart for browserbase.com. It's a company of about 40 people.",
-      "expected_output": "A standalone HTML org chart file: CEO at top, leaders and their reports nested underneath, each card with photo, name, clean title, and LinkedIn link. Visually reviewed before being shown.",
+      "expected_output": "A standalone HTML org chart file: CEO at top, leaders and their reports nested underneath, each card with photo, name, clean title, and profile link. Visually reviewed before being shown.",
       "files": [],
       "expectations": [
         "Follows orgchart-playbook.md: company_identify runs first; if the size it reports is at or below the small-company threshold (~50), the whole company is mapped without asking department-scoping questions, and if it reports a larger company, a department-scoping question is asked instead",

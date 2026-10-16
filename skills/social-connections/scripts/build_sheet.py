@@ -122,7 +122,7 @@ def main():
         raise SystemExit("openpyxl is not installed: run `pip install openpyxl` and re-run")
     wb = Workbook()
     wb.remove(wb.active)
-    write_tab(wb, "summary", [f"{target_name} - inferred LinkedIn connections"], summary, filtered=False)
+    write_tab(wb, "summary", [f"{target_name} - inferred connections"], summary, filtered=False)
     write_tab(wb, "all people", PEOPLE_HEADER, [person_row(r) for r in rows])
     write_tab(wb, "by employer", ["current_employer", "total", "tier A", "tier B", "tier C", "tier D"], employer_rows)
     for t, tab in TIER_TABS.items():

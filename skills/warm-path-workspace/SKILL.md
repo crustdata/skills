@@ -1,6 +1,6 @@
 ---
 name: warm-path-workspace
-description: Build an interactive Deal Workspace artifact for one or more target accounts - an auto-researched account brief, a buying-group map with deal roles, per-stakeholder dossiers (priorities, talking points, likely objections, a grounded opener) mined from each person's LinkedIn activity, live deal signals, prioritized plays, and a weighted warm-intro chain map that traces every route from your team's LinkedIn connections through real named intermediaries to the decision makers, ranked by how short and strong each route is. Use this whenever someone points at a company or list of companies and wants to know who to sell to and how to get in - especially if they mention or upload LinkedIn Connections.csv exports, or say things like "who do we know at X", "map our warm intros", "who are the decision makers at X", "build a stakeholder map", "find the warmest path into X", "multithread this account", or want account research turned into something shareable with their team. Trigger it even when they only say "research this account" or "help me get a meeting at X" - the warm-path mapping is the whole point.
+description: Build an interactive Deal Workspace artifact for one or more target accounts - an auto-researched account brief, a buying-group map with deal roles, per-stakeholder dossiers (priorities, talking points, likely objections, a grounded opener) mined from each person's professional profile and social posts, live deal signals, prioritized plays, and a weighted warm-intro chain map that traces every route from your team's LinkedIn connections through real named intermediaries to the decision makers, ranked by how short and strong each route is. Use this whenever someone points at a company or list of companies and wants to know who to sell to and how to get in - especially if they mention or upload LinkedIn Connections.csv exports, or say things like "who do we know at X", "map our warm intros", "who are the decision makers at X", "build a stakeholder map", "find the warmest path into X", "multithread this account", or want account research turned into something shareable with their team. Trigger it even when they only say "research this account" or "help me get a meeting at X" - the warm-path mapping is the whole point.
 display-name: Warm-Path Deal Workspace
 category: sales-gtm
 icon: network
@@ -31,7 +31,7 @@ switcher on top when there is more than one:
 | Tab | Contents |
 |---|---|
 | Overview | Account brief, headcount and funding tiles, hiring-signal chart, recent activity |
-| Stakeholders | Buying group grouped by deal role; each card opens a drawer with the LinkedIn deep dive, priorities, talking points, objections, a copy-ready opener, notable posts, career timeline - every claim behind an evidence dropdown |
+| Stakeholders | Buying group grouped by deal role; each card opens a drawer with the activity deep dive, priorities, talking points, objections, a copy-ready opener, notable posts, career timeline - every claim behind an evidence dropdown |
 | Relationship Map | YOU → warm connection → named intermediary → decision maker, colour and thickness weighted by route strength, plus a ranked chain list |
 | Signals | Hiring surges, job changes, intent posts, funding, newest first |
 | Plays | 3-6 prioritized moves, each citing the signal or path behind it |

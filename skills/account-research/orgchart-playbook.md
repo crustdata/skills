@@ -18,10 +18,10 @@ Read `config/gtm-config.md` for what the rep sells (helps pick the relevant depa
 
 ## Step 3 - Get the REAL structure (this is where charts live or die)
 
-1. **Anchor the top from authoritative sources, NEVER by connection count.** Sorting people by LinkedIn connections is garbage - a viral BDR outranks the CFO. Instead:
+1. **Anchor the top from authoritative sources, NEVER by connection count.** Sorting people that way is garbage - a viral BDR outranks the CFO. Instead:
    - **The Org** (`theorg.com/org/<company>`) - fetch it with `web_enrich_live`. It publishes *actual reporting relationships* and org sizes ("354 in org"). This is the reporting skeleton.
    - Annual report / leadership page / "deep dive" articles - name the true exec team.
-2. **Pull the people from Crustdata** (`person_search`): the senior layer, filtered on `experience.employment_details.current.company_id`. Seniority levels are a closed set — resolve the exact labels with `person_autocomplete` on `experience.employment_details.current.seniority_level` first (expect values like `CXO`, `Vice President`, `Director`). Project `fields: ["basic_profile", "experience", "social_handles"]` — `fields` is a whitelist, and these three groups carry everything a card needs: photo (`basic_profile.profile_picture_permalink`), LinkedIn (`profileUrl(p)`, i.e. `social_handles.professional_network_identifier.profile_url`), and the title at THIS company (`experience.employment_details.current[].title`). Do NOT project `professional_network.followers` — it is plan-gated and 403s the whole call. Big pulls: paginate and project in-script, returning slim rows only.
+2. **Pull the people from Crustdata** (`person_search`): the senior layer, filtered on `experience.employment_details.current.company_id`. Seniority levels are a closed set — resolve the exact labels with `person_autocomplete` on `experience.employment_details.current.seniority_level` first (expect values like `CXO`, `Vice President`, `Director`). Project `fields: ["basic_profile", "experience", "social_handles"]` — `fields` is a whitelist, and these three groups carry everything a card needs: photo (`basic_profile.profile_picture_permalink`), profile URL (`profileUrl(p)`, i.e. `social_handles.professional_network_identifier.profile_url`), and the title at THIS company (`experience.employment_details.current[].title`). Do NOT project `professional_network.followers` — it is plan-gated and 403s the whole call. Big pulls: paginate and project in-script, returning slim rows only.
 
    ```js
    // model query: senior layer at company 12345 for the org chart
@@ -45,7 +45,7 @@ Read `config/gtm-config.md` for what the rep sells (helps pick the relevant depa
    }));
    ```
 
-3. **Merge:** The Org gives the structure + real names; Crustdata gives photos (`basic_profile.profile_picture_permalink` — base64-inline it, see Step 5), LinkedIn (`profileUrl(p)`), titles. Match people by normalized name.
+3. **Merge:** The Org gives the structure + real names; Crustdata gives photos (`basic_profile.profile_picture_permalink` — base64-inline it, see Step 5), profile URLs (`profileUrl(p)`), titles. Match people by normalized name.
 
 ## Step 4 - Curate the people who matter (do NOT dump everyone)
 
@@ -53,15 +53,15 @@ For a 10k-person company the honest answer to "who matters" is the **~50-80 lead
 
 - **Read every title yourself - never keyword regex.** Regex mis-files everything ("Group Chief Banking Officer" is not a regional CEO; "Head of Lending" is a business line, not Risk). Dump all names+titles, read them, hand-place each person.
 - **Nest by title-scope containment:** breadth of scope = seniority. Group/Global > region > country > sub-team. "Group Head of Risk - Credit" sits under the CRO; "Head of Retail Credit Risk" sits under *him*; "GM Germany" sits under "Head of Country Branches". This is what makes it a tree, not a flat department list.
-- **Clean every title by hand.** Raw LinkedIn strings are junk ("CISO - Gerente Senior de Seguridad de la Información" → "CISO"). Short, human, consistent.
+- **Clean every title by hand.** Raw profile titles are junk ("CISO - Gerente Senior de Seguridad de la Información" → "CISO"). Short, human, consistent.
 - **Only use the title at the target company_id.** People carry side-company / advisory / board titles - ignore those, never stamp a "Co-Founder" from a different company onto this role.
-- **Drop the unverifiable and the noise:** **profiles with < 100 LinkedIn connections** (fake/inactive/mis-tagged — pre-filter at query time with `gte("professional_network.connections", 100)`), placeholder headlines ("--", ".", one-word junk), obvious geographic/role mismatches, investors/advisors, and vague-title profiles you can't confidently place ("Director", bare "Partner"). A smaller, correct, readable chart beats a big messy one - every time.
+- **Drop the unverifiable and the noise:** **profiles with < 100 connections** (fake/inactive/mis-tagged — pre-filter at query time with `gte("professional_network.connections", 100)`), placeholder headlines ("--", ".", one-word junk), obvious geographic/role mismatches, investors/advisors, and vague-title profiles you can't confidently place ("Director", bare "Partner"). A smaller, correct, readable chart beats a big messy one - every time.
 
 ## Step 5 - Render as a standalone HTML file
 
 Classic top-down org tree in one self-contained HTML file (write it out, then open or preview it per Step 6):
 - **CEO card at top** → thin connector line down → horizontal rail → **department-lead cards in a row** → a vertical spine under each → **that leader's people stacked and connected beneath them.**
-- Each card: circular **photo**, **name**, one clean **title**, links to LinkedIn. Company logo + title in a top bar, with the Crustdata brand lockup on the bar's right edge — a small uppercase "Powered by" eyebrow plus the official Crustdata wordmark from this skill's `assets/` (base64-inline the theme-appropriate variant, ~17px tall; light chart → `crustdata-logo-light.png`, dark chart → `crustdata-logo-dark.png`), linking to crustdata.com. Same base64 rule as the photos: never reference it by URL.
+- Each card: circular **photo**, **name**, one clean **title**, a link to their profile. Company logo + title in a top bar, with the Crustdata brand lockup on the bar's right edge — a small uppercase "Powered by" eyebrow plus the official Crustdata wordmark from this skill's `assets/` (base64-inline the theme-appropriate variant, ~17px tall; light chart → `crustdata-logo-light.png`, dark chart → `crustdata-logo-dark.png`), linking to crustdata.com. Same base64 rule as the photos: never reference it by URL.
 - **EMBED every image as a base64 data-URI — the company logo in the top bar as well as the photos** (download the `profile_picture_permalink`, base64 it, inline it). Do NOT use remote `<img src>` URLs: the photo CDN serves images as `binary/octet-stream`, which browsers refuse to render as images, so remote refs show blank even though the file "worked" in a headless screenshot (which had them cached). Base64 = always renders + truly self-contained. Keep an `onerror` → initials fallback for the few profiles with no photo.
 - Loads **fit-to-width** so the whole structure is visible at once; +/- and Fit buttons; clean thin gray connectors; white cards; one accent color for the root. No rainbow columns, no headcount badges, no clutter.
 - **Let the layout adapt so nothing is hidden.** Long titles wrap rather than truncate, cards grow to fit the name they carry, and a wide tree scrolls inside its own container rather than clipping. If you have to leave people out, say so on the page ("showing the 62 leaders we could verify") instead of silently trimming the tree.

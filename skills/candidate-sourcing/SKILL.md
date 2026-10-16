@@ -1,13 +1,14 @@
 ---
 name: candidate-sourcing
 description: >
-  End-to-end pipeline: find engineering candidates, verify LinkedIn URLs via Crustdata,
+  End-to-end pipeline: find engineering candidates, verify profile URLs via Crustdata,
   find emails (Crustdata + GitHub commits), write personalized outreach, create Gmail drafts.
   Use when someone wants to go from "I need candidates for role X" to ready-to-send drafts.
   Trigger on: "source and email candidates", "find engineers and draft outreach", "build a
   candidate pipeline", "find people for [role] and set up emails", "automate candidate
-  outreach", "run the full sourcing pipeline", or any variation where the goal is both
-  finding candidates AND reaching out. Covers the entire loop — use individual skills
+  outreach", "run the full sourcing pipeline", "I have LinkedIn URLs for these candidates,
+  find their emails and draft outreach", or any variation where the goal is both finding
+  candidates AND reaching out. Covers the entire loop — use individual skills
   (engineering-candidate-finder, contact-email-enricher, candidate-copy-drafter) only when
   the user wants just one part of the pipeline.
 display-name: Candidate Sourcing
@@ -23,7 +24,7 @@ sample-prompts:
 # Candidate Sourcing Pipeline
 
 An end-to-end skill that takes a hiring role and produces ready-to-send Gmail drafts for
-strong candidates — handling discovery, LinkedIn verification, email enrichment, personalized
+strong candidates — handling discovery, profile URL verification, email enrichment, personalized
 copy, and draft creation in one continuous workflow.
 
 The pipeline has five phases. Each phase feeds into the next, and the skill is designed to
@@ -103,9 +104,9 @@ A list of candidates, each with: full name, current role, current company, any s
 
 ---
 
-## Phase 2: Verify LinkedIn URLs
+## Phase 2: Verify profile URLs
 
-**Never guess or construct LinkedIn URLs.** This is the single most common source of errors in outreach. Guessed URLs like `firstname-lastname` or `firstname-lastname-school` frequently 404 or point to the wrong person. Real LinkedIn slugs are auto-generated and look like `david-park-086833264` or `hongjunchoi92` — they are not predictable from a person's name.
+**Never guess or construct profile URLs.** This is the single most common source of errors in outreach. Guessed URLs like `firstname-lastname` or `firstname-lastname-school` frequently 404 or point to the wrong person. Real slugs (the part after `linkedin.com/in/`) are auto-generated and look like `david-park-086833264` or `hongjunchoi92` — they are not predictable from a person's name.
 
 ### Waterfall approach
 
@@ -114,7 +115,7 @@ Use this exact priority order. Stop as soon as you get a confident match.
 **Step 1: `person_search`** (always try this first)
 
 ```ts
-// model query: verify LinkedIn URL for Person Name at Company Name
+// model query: verify the profile URL for Person Name at Company Name
 const r = await callTool("person_search", {
   filters: { op: "and", conditions: [
     { field: "basic_profile.name", type: "[.]", value: "Person Name" },
@@ -130,7 +131,7 @@ return r.data.profiles.map(p => ({
 }));
 ```
 
-Extract `social_handles.professional_network_identifier.profile_url` — this is the verified canonical LinkedIn URL.
+Extract `social_handles.professional_network_identifier.profile_url` — this is the verified canonical profile URL.
 
 **Tips:**
 - Company names have variations ("Google DeepMind" vs "DeepMind" vs "Google") — try shorter names first, then variations
@@ -141,7 +142,7 @@ Extract `social_handles.professional_network_identifier.profile_url` — this is
 **Step 2: `web_search_live`** (fallback when Step 1 returns 0)
 
 ```ts
-// model query: find LinkedIn profile for Person Name at Company
+// model query: find the profile URL for Person Name at Company
 const r = await callTool("web_search_live", {
   query: "Person Name Company distinctive-keyword",
   site: "linkedin.com",
@@ -150,7 +151,7 @@ if (!r.ok) return { error: r.message };
 return r.data.results;
 ```
 
-Verify the result matches by checking the snippet for employer/role alignment. Don't just grab the first LinkedIn URL.
+Verify the result matches by checking the snippet for employer/role alignment. Don't just grab the first profile URL.
 
 **Step 3: Mark as unverified** (if both fail)
 
@@ -440,7 +441,7 @@ If no email was found after the full enrichment chain, log them to the tracker w
 When processing many candidates (>5), use this sequence to minimize time:
 
 1. **Search and collect candidates** (Phase 1) — build the full list first
-2. **Batch LinkedIn verification** (Phase 2) — fan out `person_search` lookups with `parallelMap` in one `execute` script; web search (`web_search_live`) fallback for failures
+2. **Batch profile URL verification** (Phase 2) — fan out `person_search` lookups with `parallelMap` in one `execute` script; web search (`web_search_live`) fallback for failures
 3. **Batch email enrichment** (Phase 3A + 3B) — `person_enrich` (`fields: ["basic_profile", "contact"]`) for profile + business email, then `person_contact_enrich` (`fields: ["contact.personal_emails", "contact.phone_numbers"]`) for personal email + phone (cheaper for contact-only — skips the base-profile charge). Both batch up to 25 LinkedIn URLs per call (`chunk(urls, 25)` then `parallelMap`)
 4. **Triage for GitHub** (Phase 3C) — identify candidates still missing emails who are engineers likely to have GitHub profiles; prioritize them for commit email extraction
 5. **Batch GitHub lookups** (Phase 3C) — `web_enrich_live` with multiple GitHub URLs per call (`urls: [...]`)
@@ -536,7 +537,7 @@ return r.data.map(m => {
 
 ## What NOT to do
 
-- **Never guess LinkedIn URLs** — always verify through Crustdata. Guessed URLs caused 12 errors in a single 91-person campaign.
+- **Never guess profile URLs** — always verify through Crustdata. Guessed URLs caused 12 errors in a single 91-person campaign.
 - **Never send emails** — Gmail MCP creates drafts only. The user reviews and sends manually.
 - **Never use title-based openers** — always reference specific work the candidate has done.
 - **Never skip email validation** — discard noreply addresses, verify GitHub profiles belong to the right person.

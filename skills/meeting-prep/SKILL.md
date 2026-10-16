@@ -54,7 +54,7 @@ All Crustdata calls run inside the `execute` tool of the Crustdata MCP server ([
 - **Fan out independent calls** with `await parallelMap(items, fn)`; batch first with `chunk(list, 25)`. Never parallelize cursor pagination or dependent stages — identify → enrich stays sequential, and you parallelize *within* a stage.
 - **`company_identify` is free but fuzzy.** One domain or name can match several companies. Take the top `confidence_score` match. Do not project `social_profiles` on identify — it is plan-gated and 403s the whole call.
 - **Plan-gated projections fail the whole call with a 403** naming the field. Never project `professional_network.followers` or `metadata` on `person_search`, or `certifications` / `honors` / `updated_at` on `person_enrich`.
-- **Filter paths ≠ response paths.** You filter `experience.employment_details.current.company_name`; the response key is `...current[].name`. The LinkedIn URL returns at `social_handles.professional_network_identifier.profile_url` — use the `profileUrl(p)` accessor.
+- **Filter paths ≠ response paths.** You filter `experience.employment_details.current.company_name`; the response key is `...current[].name`. The profile URL returns at `social_handles.professional_network_identifier.profile_url` — use the `profileUrl(p)` accessor.
 - **Categorical values are closed sets.** A plausible-but-wrong value silently returns zero rows. Resolve with `company_autocomplete` / `person_autocomplete` (free) before filtering on industries, funding round types, or seniority.
 - **Zero results ≠ no signal.** Read the `trajectory` in the execute response before telling a rep an account is quiet.
 

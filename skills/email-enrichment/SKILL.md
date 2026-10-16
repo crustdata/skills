@@ -243,7 +243,7 @@ def name_matches_prefix(profile_name, email_prefix):
     return False
 ```
 
-**Check 3: AI correction for name mismatches.** When the employer domain matches but the name doesn't (right company, wrong person), use web search AI mode to find who actually owns the email:
+**Check 3: AI correction for name mismatches.** When the employer domain matches but the name doesn't (right company, wrong person), use `web_search_live` in deep research mode (`sources: ["ai"]`) to find who actually owns the email:
 
 ```ts
 // model query: who actually owns talling@lamppostgroup.com
@@ -478,7 +478,7 @@ return { profile_url: hit?.url ?? null };
 
 Check the results for any URL containing `linkedin.com/in/`. If found, proceed to Step 3.
 
-### Step 2: AI web search for name (if Step 1 didn't find a profile URL)
+### Step 2: Deep research mode for the name (if Step 1 didn't find a profile URL)
 
 ```ts
 // model query: who owns EMAIL
@@ -523,7 +523,7 @@ return r.ok ? { person: r.data?.[0]?.matches?.[0]?.person_data } : { error: r.me
 
 - Catches vanity/personal domains (carolewainaina.com, first-last.com)
 - Catches people not indexed by email but findable via web search
-- The AI mode is particularly effective at resolving "who owns this email" queries
+- Deep research mode is particularly effective at resolving "who owns this email" queries
 
 ---
 
@@ -686,7 +686,7 @@ For each email:
 
 2. **Phase 2 post-verification catches ~5% bad matches.** The person enrich API sometimes returns the wrong person at the right company (e.g., a different employee). Employer domain + name-prefix checks catch these.
 
-3. **AI web search correction works.** When person enrich returns the right company but wrong person, `web_search_live` with `sources: ["ai"]` and query "who is EMAIL" correctly identifies the real person. Recovered 7 matches in testing.
+3. **AI correction with deep research mode works.** When person enrich returns the right company but wrong person, `web_search_live` with `sources: ["ai"]` and query "who is EMAIL" correctly identifies the real person. Recovered 7 matches in testing.
 
 4. **Name/substring candidates have an extremely high false positive rate without verification.** In testing: 1,540 rejections vs 37 accepts. Substring name matching produces many spurious matches. Strict name + company verification is essential.
 
@@ -868,7 +868,7 @@ return r.ok ? { results: r.data.results } : { error: r.message };
 
 ### Verify the GitHub profile
 
-Confirm at least 2 of these match: GitHub bio mentions their company/role, profile name matches, repo topics align with their expertise. `dev_platform_enrich` returns `name`, `bio`, and `company_text` to check against. If `dev_platform_profiles[].email` is already populated and is not a noreply address, you can use it directly and skip the commit-scraping below.
+Confirm at least 2 of these match: GitHub bio mentions their company/role, profile name matches, repo topics align with their expertise. `dev_platform_enrich` returns `name`, `bio`, and `company_text` to check against. If `dev_platform_profiles[].email` is already populated and is not a noreply address, you can use it directly and skip the commit lookup below.
 
 ### Extract email from commits
 
@@ -914,7 +914,7 @@ All tools are reached via `callTool("<tool>", params)` inside an `execute({ code
 | `company_identify` | Domain to company (FREE) | `domains: [...]` (array), `names`, optional `exact_match` |
 | `person_enrich` | Email to person, or profile URL to emails | ONE of `business_emails: [...]` OR `professional_network_profile_urls: [...]`; `fields: [...]` (groups: `basic_profile`, `contact`, `experience`, …); `preview: true` (0 cr) |
 | `person_search` | Search people by filters | `filters` (`{ op, conditions: [{ field, type, value }] }`), `limit`, `cursor`, `fields` |
-| `web_search_live` | Web search (find profiles, AI "who is" lookups) | `query`, `sources` (e.g. `["web"]`, `["ai"]`) |
+| `web_search_live` | Web search (find profiles, deep research "who is" lookups) | `query`, `sources` (e.g. `["web"]`, `["ai"]`) |
 | `web_enrich_live` | Fetch page content (GitHub commits) | `urls: [...]` (array) |
 | `dev_platform_enrich` | GitHub/dev-platform profile (technical people) | `profile_url` or `crustdata_person_id` |
 

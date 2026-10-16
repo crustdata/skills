@@ -7,7 +7,7 @@ Go from "I need to hire for role X" to Gmail drafts ready to send — powered by
 Give it a role description and it handles the entire pipeline:
 
 1. **Finds candidates** matching your specific criteria via Crustdata's 1B+ person database and web search
-2. **Verifies LinkedIn profiles** — never guesses URLs, always confirms through Crustdata (guessed URLs caused 12 errors in a real 91-person campaign)
+2. **Verifies profile URLs** — never guesses them, always confirms through Crustdata (guessed URLs caused 12 errors in a real 91-person campaign)
 3. **Finds email addresses** — business emails via Crustdata `person_enrich` and personal emails + phone via Crustdata `person_contact_enrich` (cheaper for contact-only lookups), with Crustdata web search as fallback
 4. **Writes personalized outreach** — each email references the candidate's specific work (papers, repos, projects), not generic job-title flattery
 5. **Creates Gmail drafts** — ready for you to review and click send
@@ -36,7 +36,7 @@ Each Gmail draft has a personalized opener referencing their specific work — n
 | **Ranking** | Recruiter's judgment (variable) | Black-box AI — surfaces the same "obvious" candidates everyone else is targeting | You define the criteria — proof of work, hunger signals, relevance to your problems |
 | **Outreach** | Generic templates or recruiter writes | Template-based sequences | Each email references specific work the candidate has done |
 | **Control** | Low — recruiter runs the process | Medium — you search but AI ranks | Full — you see every step, review every draft before sending |
-| **Risk** | LinkedIn account bans from tools | [Reported LinkedIn suspensions](https://thedailyhire.com/tools/juicebox-ai-recruiting-review) from browser extensions | No scraping, no LinkedIn violations |
+| **Risk** | Account bans from automation tools | [Reported account suspensions](https://thedailyhire.com/tools/juicebox-ai-recruiting-review) from browser extensions | No browser extension, no account risk |
 
 ## Use cases
 
@@ -50,7 +50,7 @@ Each Gmail draft has a personalized opener referencing their specific work — n
 The skill runs 5 phases in sequence:
 
 1. **Define & search** — extracts role criteria, searches Crustdata people database + arXiv/GitHub/web for candidates matching your specific technical problems
-2. **Verify LinkedIn** — waterfall lookup: Crustdata people DB → Crustdata web search → mark unverified. Never fabricates URLs
+2. **Verify profile URLs** — waterfall lookup: Crustdata people DB → Crustdata web search → mark unverified. Never fabricates URLs
 3. **Find emails** — Crustdata `person_enrich` for business emails and `person_contact_enrich` for personal emails (batch 25 at a time), Crustdata web search as fallback
 4. **Write outreach** — personalized openers based on each candidate's proof of work (papers, repos, projects), not job titles
 5. **Create Gmail drafts + tracker** — drafts in your Gmail, CSV tracker logging every candidate and their status
@@ -70,6 +70,6 @@ The skill runs 5 phases in sequence:
 
 ## Evals
 
-12 test cases derived from real production errors in a 91-candidate outreach campaign. Covers LinkedIn URL verification, email extraction, outreach quality, and pipeline correctness. Battle-tested against actual failure modes — not synthetic examples.
+12 test cases derived from real production errors in a 91-candidate outreach campaign. Covers profile URL verification, email extraction, outreach quality, and pipeline correctness. Battle-tested against actual failure modes — not synthetic examples.
 
 See [`evals/evals.json`](./evals/evals.json).
