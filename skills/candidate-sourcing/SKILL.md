@@ -2,7 +2,8 @@
 name: candidate-sourcing
 description: >
   End-to-end pipeline: find engineering candidates, verify profile URLs via Crustdata,
-  find emails (Crustdata + GitHub commits), write personalized outreach, create Gmail drafts.
+  find emails (Crustdata enrichment, then public commit history), write personalized
+  outreach, create Gmail drafts.
   Use when someone wants to go from "I need candidates for role X" to ready-to-send drafts.
   Trigger on: "source and email candidates", "find engineers and draft outreach", "build a
   candidate pipeline", "find people for [role] and set up emails", "automate candidate
@@ -68,7 +69,7 @@ Three signals matter more than years of experience or company prestige:
 
 **Proof of work** — papers they authored, tools/repos they built with real usage, blog posts with technical depth, open-source contributions, demos or benchmarks they released.
 
-**Hunger** — technical opinions posted publicly, Medium/Substack articles, conference talks, being cited by others, active GitHub beyond just commits.
+**Hunger** — technical opinions posted publicly, blog posts and newsletter articles, conference talks, being cited by others, active open-source work beyond just commits.
 
 **Relevance** — their specific work maps to the actual problems in the role, not just adjacent domains.
 
@@ -92,9 +93,9 @@ return r.data.profiles.map(p => ({
 }));
 ```
 
-**Research papers** — search arXiv, Google Scholar, Semantic Scholar for the core technical problem. Look at first/second authors, especially those not at top-5 labs.
+**Research papers** — search academic papers and preprints for the core technical problem. Look at first/second authors, especially those not at top-5 labs.
 
-**GitHub** — search repos by topic/keyword, look at meaningful contributors (not just maintainers).
+**Open-source repos** — search repos by topic/keyword, look at meaningful contributors (not just maintainers).
 
 **Crustdata web search** (`web_search_live`) — `"[technical problem]" site:arxiv.org`, `"[name]" "[company]" github`, `"[community]" alumni engineer ML`.
 
@@ -210,7 +211,7 @@ The `contact` field group is critical — the default (`basic_profile` only) res
 
 ### 3B: Personal email via Crustdata contact enrichment
 
-**For contact-only needs, prefer `person_contact_enrich` over `person_enrich` on cost.** `person_enrich` *can* return personal email (+2) and phone (+2) via its `contact` group, but it also bills a base profile charge (base 1 + contact tiers, cap 7). `person_contact_enrich` is the contact-only tool — it skips the base-profile charge (cap 5), so it's cheaper when you only want contact data. Try this before falling back to GitHub.
+**For contact-only needs, prefer `person_contact_enrich` over `person_enrich` on cost.** `person_enrich` *can* return personal email (+2) and phone (+2) via its `contact` group, but it also bills a base profile charge (base 1 + contact tiers, cap 7). `person_contact_enrich` is the contact-only tool — it skips the base-profile charge (cap 5), so it's cheaper when you only want contact data. Try this before falling back to the commit lookup (3C).
 
 `person_contact_enrich` takes the same `professional_network_profile_urls` array (≤25 per call) and returns a `contact` object with `business_emails`, `personal_emails`, and `phone_numbers`. Pick tiers via dotted `fields`:
 ```ts
@@ -232,17 +233,17 @@ The response `person_data.contact` object has a `personal_emails` array of objec
 
 **Recommended approach:** `person_contact_enrich` returns business, personal, and phone in one call — request the tiers you need together to save round-trips. `person_enrich` (Phase 3A) can also return all three contact tiers via its `contact` group, but it adds a base-profile charge, so prefer `person_contact_enrich` when you only need contact data.
 
-If personal email is found, prefer it over business email for cold outreach (higher response rate, less likely to be filtered by corporate spam). If this returns no personal email for a candidate, fall through to GitHub commit extraction below.
+If personal email is found, prefer it over business email for cold outreach (higher response rate, less likely to be filtered by corporate spam). If this returns no personal email for a candidate, fall through to the commit lookup below.
 
-### 3C: Personal email via GitHub commit history (fallback if 3B returns nothing)
+### 3C: Personal email via public commit history (fallback if 3B returns nothing)
 
-This is the most powerful technique for technical candidates. Git records the author's email in every commit, and this metadata is accessible even when profile email privacy is enabled.
+This is the most powerful technique for technical candidates. Git records the author's email in every commit.
 
 **Step 1: Find GitHub username**
-- Native first: `person_enrich` with `social_handles` in `fields` returns a `dev_platform_identifier` (the GitHub handle), and adding `dev_platform_profiles` (the dev add-on, +1 credit) returns the full GitHub profile — repos, org memberships, and sometimes a public `email`. If that `email` is present and not a noreply address, use it and skip straight to Step 5
+- Native first: `person_enrich` with `social_handles` in `fields` returns a `dev_platform_identifier` (the developer handle), and adding `dev_platform_profiles` (the dev add-on, +1 credit) returns the full developer profile — repos, org memberships, and sometimes a public `email`. If that `email` is present and not a noreply address, use it and skip straight to Step 5
 - `dev_platform_enrich({ crustdata_person_id })` fetches the same standalone for a person you already resolved
 - Web search: `"[Name] [Company] GitHub site:github.com"`
-- Check their personal website or Twitter bio
+- Check their personal website or social profile bios
 
 **Step 2: Verify the GitHub profile belongs to this person**
 Confirm at least 2 of: bio mentions known company/role, profile name matches, repo topics align with known expertise, web search confirms the connection.
@@ -258,7 +259,7 @@ const r = await callTool("web_enrich_live", {
 if (!r.ok) return { error: r.message };
 return r.data; // [{ success, url, title, content }]
 ```
-Pick first repo where `"fork": false`. Older repos (pre-2019) are more likely to have real emails.
+Pick first repo where `"fork": false`.
 
 **Step 4: Extract email from commits**
 
@@ -271,7 +272,7 @@ const r = await callTool("web_enrich_live", {
 ```
 Look in `[0].commit.author.email` within the fetched `content`.
 
-Method B — `.patch` endpoint (bypasses privacy settings):
+Method B — `.patch` endpoint:
 ```ts
 // model query: read commit patch for {owner}/{repo}@{sha}
 const r = await callTool("web_enrich_live", {
@@ -284,21 +285,16 @@ Extract from `From: Name <email>` header line in the fetched `content`.
 
 ### 3D: Web search fallbacks
 
-When both Crustdata personal email enrichment and GitHub don't work, try these in order:
-1. GitHub issues/READMEs: `"[name]" "@gmail.com" site:github.com`
+When both Crustdata personal email enrichment and the commit lookup don't work, try these in order:
+1. Code repositories (issues, READMEs): `"[name]" "@gmail.com" site:github.com`
 2. Competitive programming: `"[name]" site:codeforces.com`
 3. Personal websites: `"[name]" "[company]" email contact`
 4. Conference speaker pages: `"[name]" "[company]" speaker email`
 5. Academic profiles: `"[name]" site:scholar.google.com`
 
-### 3E: Handle GitHub API rate limits
+### 3E: GitHub API rate limits
 
-GitHub allows 60 unauthenticated requests/hour. Workarounds:
-- Prefer the native dev enrichment for handle + repo discovery (Steps 1/3) — those calls never touch the GitHub REST API
-- Use `.patch` endpoints (don't count against REST API limits)
-- Fetch HTML commit pages and extract SHAs with regex, then use `.patch`
-- Pass multiple URLs in a single `web_enrich_live` call (`urls: [...]`)
-- Process in waves — API-dependent steps first, then non-API methods while rate limit resets
+The GitHub REST API is rate-limited. If a fetch comes back with a rate-limit message ("API rate limit exceeded"), stop the commit lookup for the rest of the batch. Send those candidates to 3D or log them as `no_contact`, and don't retry until the limit resets.
 
 ### Email priority
 
@@ -414,7 +410,7 @@ row = {
     "subject": "<subject line>",
     "message_opener": "<first sentence of email body>",
     "status": "drafted",
-    "notes": "<email type + source: e.g. Personal Gmail via GitHub commit>",
+    "notes": "<email type + source: e.g. Personal Gmail via commit history>",
     "message_body": "<full email body>"
 }
 
@@ -443,9 +439,9 @@ When processing many candidates (>5), use this sequence to minimize time:
 1. **Search and collect candidates** (Phase 1) — build the full list first
 2. **Batch profile URL verification** (Phase 2) — fan out `person_search` lookups with `parallelMap` in one `execute` script; web search (`web_search_live`) fallback for failures
 3. **Batch email enrichment** (Phase 3A + 3B) — `person_enrich` (`fields: ["basic_profile", "contact"]`) for profile + business email, then `person_contact_enrich` (`fields: ["contact.personal_emails", "contact.phone_numbers"]`) for personal email + phone (cheaper for contact-only — skips the base-profile charge). Both batch up to 25 LinkedIn URLs per call (`chunk(urls, 25)` then `parallelMap`)
-4. **Triage for GitHub** (Phase 3C) — identify candidates still missing emails who are engineers likely to have GitHub profiles; prioritize them for commit email extraction
-5. **Batch GitHub lookups** (Phase 3C) — `web_enrich_live` with multiple GitHub URLs per call (`urls: [...]`)
-6. **Web search fallbacks** (Phase 3D) — for candidates where Crustdata enrichment and GitHub both failed
+4. **Triage for commit lookup** (Phase 3C) — identify candidates still missing emails who are engineers likely to have GitHub profiles; prioritize them for commit email extraction
+5. **Batch commit lookups** (Phase 3C) — `web_enrich_live` with multiple GitHub URLs per call (`urls: [...]`)
+6. **Web search fallbacks** (Phase 3D) — for candidates where Crustdata enrichment and the commit lookup both failed
 7. **Write all email copy** (Phase 4) — draft all openers in one pass, using the proof-of-work notes from Phase 1
 8. **Create all Gmail drafts** (Phase 5) — create drafts and log to tracker
 
@@ -470,7 +466,7 @@ Always reduce in-script (return IDs/URLs/emails, not whole profiles) rather than
 ## Tool dependencies
 
 This skill requires:
-- **Crustdata MCP server** ([install.crustdata.com/mcp](https://install.crustdata.com/mcp)): a single Code Mode MCP exposing `list_tools`, `get_schema`, and `execute`. All Crustdata data tools are reached inside an `execute({ code })` plain-JavaScript script via `await callTool(name, params)` — author against the TypeScript-typed surface from `get_schema`, but write no type annotations in the body. Tools used here: `person_search`, `person_enrich` (profile + business emails), `person_contact_enrich` (personal emails + phone numbers), `company_enrich`, `dev_platform_enrich` (GitHub profile + repos), `web_search_live`, `web_enrich_live`
+- **Crustdata MCP server** ([install.crustdata.com/mcp](https://install.crustdata.com/mcp)): a single Code Mode MCP exposing `list_tools`, `get_schema`, and `execute`. All Crustdata data tools are reached inside an `execute({ code })` plain-JavaScript script via `await callTool(name, params)` — author against the TypeScript-typed surface from `get_schema`, but write no type annotations in the body. Tools used here: `person_search`, `person_enrich` (profile + business emails), `person_contact_enrich` (personal emails + phone numbers), `company_enrich`, `dev_platform_enrich` (Dev Platform: developer profile + repos), `web_search_live`, `web_enrich_live`
 - **Gmail MCP**: `gmail_create_draft`
 - **Python** (with `openpyxl` for spreadsheet I/O, `csv` for tracker)
 - **Web search** (Crustdata `web_search_live`) for fallback email discovery

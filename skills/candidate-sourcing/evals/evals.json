@@ -152,7 +152,7 @@
           "description": "Selected repos sorted by created date ascending, picked non-fork"
         }
       ],
-      "failure_story": "Crustdata enrichment sometimes returns wrong GitHub profiles for common names. In one case (Ali Kashani, CEO of Serve Robotics), the enrichment returned a GitHub profile 'alikashani' that belonged to a completely different person. Extracting that email would have sent outreach to a stranger."
+      "failure_story": "Crustdata enrichment sometimes returns the wrong developer profile for common names. In one case (Ali Kashani, CEO of Serve Robotics), the enrichment returned the handle 'alikashani', which belonged to a completely different person. Extracting that email would have sent outreach to a stranger."
     },
     {
       "id": 7,
@@ -331,7 +331,7 @@
       "name": "personal-email-enrichment-via-crustdata",
       "category": "email_enrichment",
       "prompt": "Find personal email addresses for these candidates using Crustdata enrichment. I already have their verified LinkedIn URLs: 1) Rajat Arya — https://www.linkedin.com/in/rajatarya (Team Lead at Hugging Face). 2) Anurag Sahu — https://www.linkedin.com/in/anurag-sahu-mle (Staff ML Engineer at Zscaler). Try Crustdata's personal email enrichment first before falling back to GitHub.",
-      "expected_output": "Should use person_contact_enrich with the dotted 'contact.personal_emails' field to request personal emails (preferred for contact-only needs — it skips person_enrich's base-profile charge). Should try this BEFORE falling back to GitHub commit extraction. The enrichment call should pass the LinkedIn URLs in professional_network_profile_urls. If personal emails are returned, they should be non-noreply addresses. If not returned, should fall through to GitHub commit extraction (Phase 3C).",
+      "expected_output": "Should use person_contact_enrich with the dotted 'contact.personal_emails' field to request personal emails (preferred for contact-only needs — it skips person_enrich's base-profile charge). Should try this BEFORE falling back to the commit lookup. The enrichment call should pass the LinkedIn URLs in professional_network_profile_urls. If personal emails are returned, they should be non-noreply addresses. If not returned, should fall through to the commit lookup (Phase 3C).",
       "assertions": [
         {
           "text": "Uses person_contact_enrich with the dotted 'contact.personal_emails' field (via callTool inside execute)",
@@ -340,9 +340,9 @@
           "description": "The enrichment call must include 'contact.personal_emails' in the dotted fields array (person_contact_enrich is preferred for contact-only needs — cheaper than person_enrich, which adds a base-profile charge)"
         },
         {
-          "text": "Personal email enrichment is attempted BEFORE GitHub commit extraction",
+          "text": "Personal email enrichment is attempted BEFORE the commit lookup",
           "type": "semantic",
-          "description": "Crustdata personal email (Phase 3B) should be tried before GitHub commits (Phase 3C)"
+          "description": "Crustdata personal email (Phase 3B) should be tried before commit history (Phase 3C)"
         },
         {
           "text": "person_contact_enrich returns personal email and phone together via dotted contact.* tiers",
@@ -350,12 +350,12 @@
           "description": "The skill should know person_contact_enrich yields personal email + phone (and business) in one call and is cheaper for contact-only needs, since person_enrich's contact group can return the same tiers but adds a base-profile charge"
         },
         {
-          "text": "Falls back to GitHub commit extraction if personal email enrichment returns nothing",
+          "text": "Falls back to the commit lookup if personal email enrichment returns nothing",
           "type": "semantic",
-          "description": "When person_data.contact.personal_emails is empty or null, the skill should proceed to Phase 3C (GitHub)"
+          "description": "When person_data.contact.personal_emails is empty or null, the skill should proceed to Phase 3C (commit history)"
         }
       ],
-      "failure_story": "Before this feature existed, the only way to get personal emails was GitHub commit extraction — slow, unreliable for non-engineers, and rate-limited. Crustdata's person_contact_enrich tool returns personal emails (person_data.contact.personal_emails) directly from the enrichment API, making it faster and more reliable. The key: always try this before falling back to GitHub."
+      "failure_story": "Before this feature existed, the only way to get personal emails was the commit lookup — slow, unreliable for non-engineers, and rate-limited. Crustdata's person_contact_enrich tool returns personal emails (person_data.contact.personal_emails) directly from the enrichment API, making it faster and more reliable. The key: always try this before falling back to commit history."
     }
   ]
 }

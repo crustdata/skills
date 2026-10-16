@@ -49,7 +49,7 @@ Each Gmail draft has a personalized opener referencing their specific work — n
 
 The skill runs 5 phases in sequence:
 
-1. **Define & search** — extracts role criteria, searches Crustdata people database + arXiv/GitHub/web for candidates matching your specific technical problems
+1. **Define & search** — extracts role criteria, searches Crustdata people database, research papers, open-source repos and the web for candidates matching your specific technical problems
 2. **Verify profile URLs** — waterfall lookup: Crustdata people DB → Crustdata web search → mark unverified. Never fabricates URLs
 3. **Find emails** — Crustdata `person_enrich` for business emails and `person_contact_enrich` for personal emails (batch 25 at a time), Crustdata web search as fallback
 4. **Write outreach** — personalized openers based on each candidate's proof of work (papers, repos, projects), not job titles

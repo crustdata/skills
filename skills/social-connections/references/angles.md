@@ -19,8 +19,8 @@ function + window or you will return the company's whole headcount.
 employment entries back and compute the window overlap in the script.
 
 **2. education and research**, one angle per school, plus the lab/advisor/co-author
-layer if the target is academic. Co-authors verify off Google Scholar, Semantic
-Scholar and patents (`web_search_live`), and survive a name-collision check. Bare
+layer if the target is academic. Co-authors verify off academic profiles and
+patents (`web_search_live`), and survive a name-collision check. Bare
 school cohorts are weak and enormous (one university's single graduating year ran
 past 13,000 people); intersect them with something else, usually "same school AND
 later worked at a company the target worked at", as two separate `all_of()` groups.

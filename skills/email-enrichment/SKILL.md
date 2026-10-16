@@ -24,7 +24,7 @@ sample-prompts:
 Two directions, one skill:
 
 1. **Email to person** - Turn a list of email addresses into rich contact profiles (name, title, company, profile URL). Uses a six-phase waterfall optimized for coverage and accuracy.
-2. **Person to email** - Find business emails, personal emails, and phone numbers for a list of people. Uses enrichment with personal contact info, plus GitHub commit fallbacks for technical people.
+2. **Person to email** - Find business emails, personal emails, and phone numbers for a list of people. Uses enrichment with personal contact info, plus a commit-history fallback for technical people.
 
 ---
 
@@ -837,22 +837,22 @@ return r.ok ? { contact: r.data?.[0]?.matches?.[0]?.person_data?.contact } : { e
 
 ---
 
-## Step 4: GitHub fallback for personal emails (technical people)
+## Step 4: Commit-history fallback for personal emails (technical people)
 
-If personal contact info enrichment is not available or returns empty for technical people, fall back to GitHub commit history. This only works for engineers, developers, and technical founders.
+If personal contact info enrichment is not available or returns empty for technical people, fall back to their public commit history. This only works for engineers, developers, and technical founders.
 
 ### Find their GitHub username
 
-Check the person record first: `social_handles` carries a `dev_platform_identifier` (the person's GitHub handle) alongside the professional-network one, and adding `dev_platform_profiles` to `person_enrich`'s `fields` (the dev add-on, +1 credit) returns the full GitHub profile — repos, org memberships, `all_languages`, and sometimes a public `email` — in the same call as the profile. For a person you resolved without those groups, use standalone `dev_platform_enrich`. Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
+Check the person record first: `social_handles` carries a `dev_platform_identifier` (the person's developer handle) alongside the professional-network one, and adding `dev_platform_profiles` to `person_enrich`'s `fields` (the dev add-on, +1 credit) returns the full developer profile — repos, org memberships, `all_languages`, and sometimes a public `email` — in the same call as the profile. For a person you resolved without those groups, use standalone `dev_platform_enrich`. Pass EXACTLY ONE of `crustdata_person_id` — every match row from earlier phases carries it as `person_data.crustdata_person_id`, so use this for a person you already resolved — or `profile_url`, which must be a **GitHub** URL (`https://github.com/<username>`); a LinkedIn URL here is rejected with a 400. It returns `dev_platform_profiles[]` with `profile_url`, `name`, `bio`, `company_text`, and sometimes a public `email`:
 
 ```ts
-// model query: find this person's GitHub profile (and any public email)
+// model query: find this person's developer profile (and any public email)
 const r = await callTool("dev_platform_enrich", {
   crustdata_person_id: PERSON_ID_FROM_EARLIER_PHASE, // person_data.crustdata_person_id
 });
 if (!r.ok) return { error: r.message };
 // r.data.dev_platform_profiles[]: { profile_url, name, bio, company_text, email, ... }
-return { github: r.data.dev_platform_profiles ?? [] };
+return { dev_profiles: r.data.dev_platform_profiles ?? [] };
 ```
 
 Or search the web:
@@ -868,7 +868,7 @@ return r.ok ? { results: r.data.results } : { error: r.message };
 
 ### Verify the GitHub profile
 
-Confirm at least 2 of these match: GitHub bio mentions their company/role, profile name matches, repo topics align with their expertise. `dev_platform_enrich` returns `name`, `bio`, and `company_text` to check against. If `dev_platform_profiles[].email` is already populated and is not a noreply address, you can use it directly and skip the commit lookup below.
+Confirm at least 2 of these match: bio mentions their company/role, profile name matches, repo topics align with their expertise. `dev_platform_enrich` returns `name`, `bio`, and `company_text` to check against. If `dev_platform_profiles[].email` is already populated and is not a noreply address, you can use it directly and skip the commit lookup below.
 
 ### Extract email from commits
 
@@ -915,8 +915,8 @@ All tools are reached via `callTool("<tool>", params)` inside an `execute({ code
 | `person_enrich` | Email to person, or profile URL to emails | ONE of `business_emails: [...]` OR `professional_network_profile_urls: [...]`; `fields: [...]` (groups: `basic_profile`, `contact`, `experience`, …); `preview: true` (0 cr) |
 | `person_search` | Search people by filters | `filters` (`{ op, conditions: [{ field, type, value }] }`), `limit`, `cursor`, `fields` |
 | `web_search_live` | Web search (find profiles, deep research "who is" lookups) | `query`, `sources` (e.g. `["web"]`, `["ai"]`) |
-| `web_enrich_live` | Fetch page content (GitHub commits) | `urls: [...]` (array) |
-| `dev_platform_enrich` | GitHub/dev-platform profile (technical people) | `profile_url` or `crustdata_person_id` |
+| `web_enrich_live` | Fetch page content (commit patches) | `urls: [...]` (array) |
+| `dev_platform_enrich` | Developer profile lookup (Dev Platform) for technical people | `profile_url` (a GitHub URL) or `crustdata_person_id` |
 
 MCP server: `install.crustdata.com/mcp` (Code Mode — meta-tools `list_tools`, `get_schema`, `execute`).
 

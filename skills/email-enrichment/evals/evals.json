@@ -4,14 +4,14 @@
     {
       "id": 1,
       "prompt": "Find business and personal emails for these 5 people:\n1) Topher Conway, Managing Partner at SV Angel - linkedin.com/in/topherc\n2) Pete Koomen, General Partner at Y Combinator - linkedin.com/in/petekoomen\n3) Kaushik Iska, Engineer at ClickHouse - linkedin.com/in/kaushikiska\n4) Eric Migicovsky, Partner at Y Combinator - linkedin.com/in/ericmigicovsky\n5) Honglei Liu, Founder at TofuHQ - linkedin.com/in/honglliu",
-      "expected_output": "A table listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from GitHub commit history or web search fallbacks). Technical people should have GitHub-sourced personal emails where possible. Source attribution for each email found.",
+      "expected_output": "A table listing all 5 people with their business emails (from Crustdata enrichment) and personal emails (from public commit history or web search fallbacks). Technical people should have personal emails from commit history where possible. Source attribution for each email found.",
       "files": [],
       "expectations": [
         "Calls person_enrich (via execute/callTool) with professional_network_profile_urls and the contact field group to get business emails",
         "Batches all profile URLs into a single person_enrich call (not one per person)",
         "Searches for GitHub profiles for people identified as technical (Kaushik, Eric, Honglei) via dev_platform_enrich or web_search_live",
         "Verifies GitHub profile identity before extracting commit emails",
-        "Does not search GitHub for non-technical people (Topher as VC)",
+        "Does not search for GitHub profiles for non-technical people (Topher as VC)",
         "Presents results in a clear table with source attribution for each email found"
       ]
     },
@@ -31,13 +31,13 @@
     {
       "id": 3,
       "prompt": "I need personal emails (gmail, etc.) for these engineers I want to recruit. Business emails won't work since I'm reaching out personally:\n1) Kaushik Iska, PeerDB/ClickHouse engineer\n2) Pete Koomen, previously at Optimizely\n3) Honglei Liu, Head of ML at Twitter / TofuHQ founder",
-      "expected_output": "Finds personal emails for all 3 technical people via GitHub commit history extraction. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search when GitHub doesn't yield results.",
+      "expected_output": "Finds personal emails for all 3 technical people via the commit lookup. For each person: finds GitHub profile, verifies identity, locates oldest non-fork repo, extracts commit author email. Falls back to web search when the commit lookup doesn't yield results.",
       "files": [],
       "expectations": [
         "Searches for GitHub profiles for all 3 people (all are technical) via dev_platform_enrich or web_search_live",
-        "Finds oldest non-fork repositories for GitHub commit email extraction via web_enrich_live",
+        "Finds oldest non-fork repositories for the commit lookup via web_enrich_live",
         "Validates extracted emails are not noreply/generated addresses",
-        "Falls back to web_search_live when GitHub doesn't yield a personal email",
+        "Falls back to web_search_live when the commit lookup doesn't yield a personal email",
         "Clearly indicates which emails are personal vs business in the output"
       ]
     },
