@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "name": "crustdata",
   "displayName": "Crustdata",
-  "version": "1.10.5",
-  "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts.",
+  "version": "1.10.6",
+  "description": "Live B2B data on 1B+ people and 60M+ companies: search, enrich, contacts, jobs, and social posts.",
   "compat": {
     "source": "native",
     "manifestDir": ".muse-plugin"

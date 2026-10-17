@@ -1,7 +1,7 @@
 {
   "name": "crustdata",
-  "version": "1.10.5",
-  "description": "B2B data on people and companies: people search, company search and enrichment across 800M+ profiles and 200M+ companies. Work history, headcount, funding and other company data, job postings, social posts, and contact data (work emails, phone numbers). Build lead lists, source candidates, do market research, see who is hiring, and look up the Crustdata API docs while you code.",
+  "version": "1.10.6",
+  "description": "B2B data on people and companies: people search, company search and enrichment across 1B+ profiles and 60M+ companies. Work history, headcount, funding and other company data, job postings, social posts, and contact data (work emails, phone numbers). Build lead lists, source candidates, do market research, see who is hiring, and look up the Crustdata API docs while you code.",
   "author": {
     "name": "Crustdata",
     "email": "support@crustdata.co",

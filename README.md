@@ -22,7 +22,7 @@ Open-source skills for [Claude.ai](https://claude.ai), [Claude Desktop](https://
 
 ## Getting started
 
-Install the plugin. It carries the Crustdata connector (800M+ profiles, 200M+ companies) and every skill in the table above, so there is nothing else to set up.
+Install the plugin. It carries the Crustdata connector (1B+ profiles, 60M+ companies) and every skill in the table above, so there is nothing else to set up.
 
 ### Claude.ai, Claude Desktop, or Cowork
 

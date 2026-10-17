@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "crustdata",
   "displayName": "Crustdata",
-  "version": "1.10.5",
-  "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills.",
+  "version": "1.10.6",
+  "description": "Crustdata for Claude: MCP access to 1B+ profiles and 60M+ companies, plus bundled research skills.",
   "author": {
     "name": "Crustdata",
     "email": "support@crustdata.co",

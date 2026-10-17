@@ -1,7 +1,7 @@
 {
   "name": "crustdata",
-  "version": "1.10.5",
-  "description": "Live B2B data on 800M+ people and 200M+ companies, plus bundled GTM and sourcing skills.",
+  "version": "1.10.6",
+  "description": "Live B2B data on 1B+ people and 60M+ companies, plus bundled GTM and sourcing skills.",
   "author": {
     "name": "Crustdata",
     "email": "support@crustdata.co",
@@ -28,7 +28,7 @@
   "interface": {
     "displayName": "Crustdata",
     "shortDescription": "People and company data, live",
-    "longDescription": "Search, filter, count and enrich across 800M+ profiles and 200M+ companies - employment history with dates and seniority, headcount over time, funding, job postings, social posts, and work emails - plus ready-made workflows for prospecting, account research, outreach, meeting prep, and candidate sourcing.",
+    "longDescription": "Search, filter, count and enrich across 1B+ profiles and 60M+ companies - employment history with dates and seniority, headcount over time, funding, job postings, social posts, and work emails - plus ready-made workflows for prospecting, account research, outreach, meeting prep, and candidate sourcing.",
     "developerName": "Crustdata",
     "capabilities": [
       "Read"
@@ -46,14 +46,14 @@
   "vendors": {
     "claude": {
       "displayName": "Crustdata",
-      "description": "Crustdata for Claude: MCP access to 800M+ profiles and 200M+ companies, plus bundled research skills."
+      "description": "Crustdata for Claude: MCP access to 1B+ profiles and 60M+ companies, plus bundled research skills."
     },
     "codex": {},
     "cursor": {
       "minClientVersions": {
         "cursor": "3.13.0"
       },
-      "description": "B2B data on people and companies: people search, company search and enrichment across 800M+ profiles and 200M+ companies. Work history, headcount, funding and other company data, job postings, social posts, and contact data (work emails, phone numbers). Build lead lists, source candidates, do market research, see who is hiring, and look up the Crustdata API docs while you code.",
+      "description": "B2B data on people and companies: people search, company search and enrichment across 1B+ profiles and 60M+ companies. Work history, headcount, funding and other company data, job postings, social posts, and contact data (work emails, phone numbers). Build lead lists, source candidates, do market research, see who is hiring, and look up the Crustdata API docs while you code.",
       "category": "integrations",
       "tags": [
         "crustdata",
@@ -64,10 +64,10 @@
       ]
     },
     "grok": {
-      "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts."
+      "description": "Live B2B data on 1B+ people and 60M+ companies: search, enrich, contacts, jobs, and social posts."
     },
     "muse": {
-      "description": "Live B2B data on 800M+ people and 200M+ companies: search, enrich, contacts, jobs, and social posts."
+      "description": "Live B2B data on 1B+ people and 60M+ companies: search, enrich, contacts, jobs, and social posts."
     }
   }
 }

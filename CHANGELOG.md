@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.10.6
+
+- The plugin descriptions, the README and the bundled skill READMEs give Crustdata coverage as
+  1B+ profiles and 60M+ companies. Tools and inputs are unchanged.
+
 ## 1.10.5
 
 - Wording updates in the bundled Candidate Sourcing, Email Enrichment and Social Connections
