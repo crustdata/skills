@@ -1,6 +1,6 @@
 # Email Enrichment
 
-Turn email addresses into rich contact profiles, or find verified emails for any list of people. Powered by [Crustdata](https://crustdata.com)'s 800M+ profile database and real-time enrichment APIs.
+Turn email addresses into rich contact profiles, or find verified emails for any list of people. Powered by [Crustdata](https://crustdata.com)'s 1B+ profile database and real-time enrichment APIs.
 
 ## What it does
 
@@ -75,7 +75,7 @@ All tools run inside `execute({ code })` scripts via `callTool("<tool>", params)
 |------|-------------|------|
 | `company_identify` | Resolves an email domain to a company | Free |
 | `person_enrich` | Looks up a person by work email or profile URL, returns business/personal emails | ~1-7 cr (additive) |
-| `person_search` | Searches 800M+ profiles by name and company | ~0.03 cr/result |
+| `person_search` | Searches 1B+ profiles by name and company | ~0.03 cr/result |
 | `web_search_live` | Web search fallback for hard-to-find contacts | 1 cr/query |
 | `web_enrich_live` | Fetches page content for fallback contact discovery | 1 cr/page |
 | `dev_platform_enrich` | Developer profile lookup (Dev Platform) for technical people | +1 cr |

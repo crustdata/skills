@@ -1,6 +1,6 @@
 # Sales Prospecting
 
-One skill, seven prospecting playbooks: build target lists, rank your accounts, size your market, and get alerted when champions leave your customers. Powered by [Crustdata](https://crustdata.com)'s real-time data on 200M+ companies and 800M+ people.
+One skill, seven prospecting playbooks: build target lists, rank your accounts, size your market, and get alerted when champions leave your customers. Powered by [Crustdata](https://crustdata.com)'s real-time data on 60M+ companies and 1B+ people.
 
 ## What it does
 

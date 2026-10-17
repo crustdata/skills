@@ -1,6 +1,6 @@
 # Sales Outreach
 
-Writes the cold email, the call script, the LinkedIn note, the reply, and the whole sequence. Every touch opens on a real, dated signal about the person you're writing to. Powered by [Crustdata](https://crustdata.com)'s real-time data on 200M+ companies and 800M+ people.
+Writes the cold email, the call script, the LinkedIn note, the reply, and the whole sequence. Every touch opens on a real, dated signal about the person you're writing to. Powered by [Crustdata](https://crustdata.com)'s real-time data on 60M+ companies and 1B+ people.
 
 It finds the reason to write before it writes.
 

@@ -1,6 +1,6 @@
 # Meeting Prep
 
-Score today's inbound and walk into today's calls knowing something real. Powered by [Crustdata](https://crustdata.com)'s live data on 200M+ companies and 800M+ people.
+Score today's inbound and walk into today's calls knowing something real. Powered by [Crustdata](https://crustdata.com)'s live data on 60M+ companies and 1B+ people.
 
 ## What it does
 
